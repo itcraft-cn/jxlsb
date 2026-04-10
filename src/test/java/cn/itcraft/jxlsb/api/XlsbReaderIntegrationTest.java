@@ -7,26 +7,32 @@ import java.nio.file.Path;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * XlsbReader集成测试
- * 
- * <p>验证写入-读取循环的正确性。
- * 
- * @author AI架构师
- * @since 1.0.0
- */
 class XlsbReaderIntegrationTest {
     
     @TempDir
     Path tempDir;
     
+    private Path createTestFile() throws Exception {
+        Path testFile = tempDir.resolve("test.xlsb");
+        try (XlsbWriter writer = XlsbWriter.builder()
+                .path(testFile)
+                .build()) {
+            writer.writeBatch("Sheet1", 
+                (row, col) -> {
+                    switch (col) {
+                        case 0: return CellData.number(row * 100.0);
+                        case 1: return CellData.text("Hello");
+                        default: return CellData.blank();
+                    }
+                },
+                10, 3);
+        }
+        return testFile;
+    }
+    
     @Test
     void testReadExistingFile() throws Exception {
-        Path testFile = Path.of("/tmp/jxlsb_new.xlsb");
-        
-        if (!testFile.toFile().exists()) {
-            return;
-        }
+        Path testFile = createTestFile();
         
         XlsbReader reader = XlsbReader.builder()
             .path(testFile)
@@ -56,11 +62,7 @@ class XlsbReaderIntegrationTest {
     
     @Test
     void testForEachSheet() throws Exception {
-        Path testFile = Path.of("/tmp/jxlsb_new.xlsb");
-        
-        if (!testFile.toFile().exists()) {
-            return;
-        }
+        Path testFile = createTestFile();
         
         XlsbReader reader = XlsbReader.builder()
             .path(testFile)
