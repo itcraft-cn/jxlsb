@@ -86,13 +86,13 @@ public final class WorkbookWriter {
         int relIdLen = relId.length();
         int nameLen = sheet.name.length();
         
-        int recordSize = 1 + 4 + (4 + relIdLen * 2) + (4 + nameLen * 2);
+        int recordSize = 4 + 4 + (4 + relIdLen * 2) + (4 + nameLen * 2);
         
         w.writeRecordHeader(Biff12RecordType.BrtBundleSh, recordSize);
         
-        w.writeBytes(new byte[]{0});
+        w.writeIntLE(0);
         
-        w.writeIntLE(sheet.sheetId);
+        w.writeIntLE(1);
         
         w.writeXLWideString(relId);
         
