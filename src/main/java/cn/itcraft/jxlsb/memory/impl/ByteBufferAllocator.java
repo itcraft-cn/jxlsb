@@ -30,8 +30,8 @@ public final class ByteBufferAllocator implements OffHeapAllocator {
         }
         
         try {
-            ByteBuffer buffer = ByteBuffer.allocateDirect((int) size)
-                .order(ByteOrder.LITTLE_ENDIAN);
+            ByteBuffer buffer = ByteBuffer.allocateDirect((int) size);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
             totalAllocated.addAndGet(size);
             
             return new ByteBufferMemoryBlock(buffer, size, this);
