@@ -14,15 +14,15 @@ public final class ContentTypes {
     
     public byte[] toXml() {
         StringBuilder sb = new StringBuilder();
-        sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
-        sb.append("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">\n");
-        
-        sb.append("  <Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>\n");
-        sb.append("  <Default Extension=\"bin\" ContentType=\"application/vnd.ms-excel.sheet.binary.macroEnabled.main\"/>\n");
+        sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
+        sb.append("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">");
+        sb.append("<Default Extension=\"bin\" ContentType=\"application/vnd.ms-excel.sheet.binary.macroEnabled.main\"/>");
+        sb.append("<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>");
+        sb.append("<Default Extension=\"xml\" ContentType=\"application/xml\"/>");
         
         for (Override o : overrides) {
-            sb.append("  <Override PartName=\"").append(o.partName)
-              .append("\" ContentType=\"").append(o.contentType).append("\"/>\n");
+            sb.append("<Override PartName=\"").append(o.partName)
+              .append("\" ContentType=\"").append(o.contentType).append("\"/>");
         }
         
         sb.append("</Types>");

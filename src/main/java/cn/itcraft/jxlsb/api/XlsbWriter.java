@@ -60,19 +60,15 @@ public final class XlsbWriter implements AutoCloseable {
     }
     
     private void writeContainerStructure() throws IOException {
-        // [Content_Types].xml
         ContentTypes ct = new ContentTypes();
-        ct.addOverride("/xl/workbook.bin", "application/vnd.ms-excel.sheet.binary.macroEnabled.main");
-        ct.addOverride("/xl/styles.bin", "application/vnd.ms-excel.styles");
-        ct.addOverride("/xl/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml");
         ct.addOverride("/docProps/app.xml", "application/vnd.openxmlformats-officedocument.extended-properties+xml");
         ct.addOverride("/docProps/core.xml", "application/vnd.openxmlformats-package.core-properties+xml");
+        ct.addOverride("/xl/sharedStrings.bin", "application/vnd.ms-excel.sharedStrings");
+        ct.addOverride("/xl/styles.bin", "application/vnd.ms-excel.styles");
+        ct.addOverride("/xl/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml");
         for (int i = 1; i <= sheetCount; i++) {
             ct.addOverride("/xl/worksheets/sheet" + i + ".bin", 
                           "application/vnd.ms-excel.worksheet");
-        }
-        if (sharedStrings.getCount() > 0) {
-            ct.addOverride("/xl/sharedStrings.bin", "application/vnd.ms-excel.sharedStrings");
         }
         container.addEntry("[Content_Types].xml", ct.toXml());
         
