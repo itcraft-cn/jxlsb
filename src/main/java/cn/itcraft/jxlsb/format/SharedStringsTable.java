@@ -37,6 +37,14 @@ public final class SharedStringsTable {
         return totalCount;
     }
     
+    public String getString(int index) {
+        return strings.get(index);
+    }
+    
+    public int size() {
+        return strings.size();
+    }
+    
     /**
      * 生成sharedStrings.bin内容
      * 记录序列：BrtBeginSst -> BrtSSTItem* -> BrtEndSst
