@@ -1,12 +1,13 @@
 package cn.itcraft.jxlsb.format;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Workbook.bin写入器
+ * 严格按照MS-XLSB规范实现
+ */
 public final class WorkbookWriter {
     
     private final List<SheetInfo> sheets = new ArrayList<>();
@@ -19,54 +20,67 @@ public final class WorkbookWriter {
         return sheets.size();
     }
     
+    /**
+     * 生成workbook.bin内容
+     * 记录序列：BrtBeginBook -> BrtFileVersion -> BrtWbProp -> BrtBeginBookViews -> ... -> BrtEndBook
+     */
     public byte[] toBiff12Bytes() throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(baos);
+        Biff12Writer w = new Biff12Writer();
         
-        // BEGIN_BOOK
-        writeRecordHeader(dos, Biff12Constants.BEGIN_BOOK, 0);
+        // BrtBeginBook (empty record)
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginBook);
         
-        // FILE_VERSION
-        writeRecordHeader(dos, Biff12Constants.FILE_VERSION, 12);
-        writeIntLE(dos, 0x0006);
-        writeIntLE(dos, 0);
-        writeIntLE(dos, 0);
+        // BrtFileVersion - 可选，省略以简化
         
-        // BEGIN_BUNDLE_SHS
-        writeRecordHeader(dos, Biff12Constants.BEGIN_BUNDLE_SHS, 0);
+        // BrtWbProp - 可选，省略以简化
         
-        // Sheet records
+        // BrtBeginBookViews - 可选，省略以简化
+        
+        // BrtBeginBundleShs (开始Sheet集合)
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginBundleShs);
+        
+        // BrtBundleSh records (每个Sheet一个)
         for (SheetInfo sheet : sheets) {
-            byte[] nameBytes = sheet.name.getBytes(StandardCharsets.UTF_16LE);
-            writeRecordHeader(dos, Biff12Constants.SHEET, 13 + nameBytes.length);
-            writeIntLE(dos, sheet.sheetId);
-            dos.writeByte(0); // state (visible)
-            writeIntLE(dos, nameBytes.length / 2);
-            dos.write(nameBytes);
+            writeBrtBundleSh(w, sheet);
         }
         
-        // END_BUNDLE_SHS
-        writeRecordHeader(dos, Biff12Constants.END_BUNDLE_SHS, 0);
+        // BrtEndBundleShs
+        w.writeEmptyRecord(Biff12RecordType.BrtEndBundleShs);
         
-        // END_BOOK
-        writeRecordHeader(dos, Biff12Constants.END_BOOK, 0);
+        // BrtEndBook
+        w.writeEmptyRecord(Biff12RecordType.BrtEndBook);
         
-        dos.flush();
-        return baos.toByteArray();
+        return w.toByteArray();
     }
     
-    private void writeRecordHeader(DataOutputStream dos, int type, int size) throws IOException {
-        dos.write(type & 0xFF);
-        dos.write((type >> 8) & 0xFF);
-        dos.write(size & 0xFF);
-        dos.write((size >> 8) & 0xFF);
-    }
-    
-    private void writeIntLE(DataOutputStream dos, int value) throws IOException {
-        dos.write(value & 0xFF);
-        dos.write((value >> 8) & 0xFF);
-        dos.write((value >> 16) & 0xFF);
-        dos.write((value >> 24) & 0xFF);
+    /**
+     * 写入BrtBundleSh记录
+     * 结构：hsState(1) + iTabID(4) + strRelID(变量) + strName(变量)
+     */
+    private void writeBrtBundleSh(Biff12Writer w, SheetInfo sheet) throws IOException {
+        // 先计算大小
+        int nameLen = sheet.name.length();
+        int strLen = 4 + nameLen * 2;  // 字符数(4) + UTF-16LE字符
+        
+        // strRelID 固定为 "rId{N}"
+        String relId = "rId" + sheet.sheetId;
+        int relIdLen = 4 + relId.length() * 2;
+        
+        int recordSize = 1 + 4 + relIdLen + strLen;  // hsState + iTabID + strRelID + strName
+        
+        w.writeRecordHeader(Biff12RecordType.BrtBundleSh, recordSize);
+        
+        // hsState (1 byte) - 0 = visible
+        w.writeBytes(new byte[]{0});
+        
+        // iTabID (4 bytes)
+        w.writeIntLE(sheet.sheetId);
+        
+        // strRelID (XLWideString)
+        w.writeXLWideString(relId);
+        
+        // strName (XLWideString)
+        w.writeXLWideString(sheet.name);
     }
     
     private static final class SheetInfo {
