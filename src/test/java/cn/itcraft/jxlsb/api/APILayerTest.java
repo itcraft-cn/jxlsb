@@ -17,8 +17,17 @@ class APILayerTest {
     @DisplayName("Should build XlsbReader")
     void shouldBuildXlsbReader() throws IOException {
         Path testFile = tempDir.resolve("test.xlsb");
-        testFile.toFile().createNewFile();
         
+        // 先写入一个有效的XLSB文件
+        try (XlsbWriter writer = XlsbWriter.builder()
+                .path(testFile)
+                .build()) {
+            writer.writeBatch("Sheet1", 
+                (row, col) -> CellData.number(row + col),
+                10, 5);
+        }
+        
+        // 然后读取
         try (XlsbReader reader = XlsbReader.builder()
                 .path(testFile)
                 .build()) {
