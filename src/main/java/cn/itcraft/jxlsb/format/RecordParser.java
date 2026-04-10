@@ -9,6 +9,10 @@ import cn.itcraft.jxlsb.format.record.BeginSheetRecord;
 import cn.itcraft.jxlsb.format.record.BeginRowRecord;
 import cn.itcraft.jxlsb.format.record.StringRecord;
 import cn.itcraft.jxlsb.format.record.VersionRecord;
+import cn.itcraft.jxlsb.format.record.IndexRecord;
+import cn.itcraft.jxlsb.format.record.FormatRecord;
+import cn.itcraft.jxlsb.format.record.XFRecord;
+import cn.itcraft.jxlsb.format.record.FormulaRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Objects;
@@ -77,6 +81,14 @@ public final class RecordParser {
                 return new StringRecord(size, data);
             case VersionRecord.RECORD_TYPE:
                 return new VersionRecord(size, data);
+            case IndexRecord.RECORD_TYPE:
+                return new IndexRecord(size, data);
+            case FormatRecord.RECORD_TYPE:
+                return new FormatRecord(size, data);
+            case XFRecord.RECORD_TYPE:
+                return new XFRecord(size, data);
+            case FormulaRecord.RECORD_TYPE:
+                return new FormulaRecord(size, data);
             default:
                 return new UnknownRecord(type, size, data);
         }
