@@ -18,7 +18,7 @@ public final class SheetWriter {
     
     /**
      * 生成worksheet.bin内容
-     * 记录序列：BrtBeginSheet -> BrtWsDim -> BrtBeginSheetData -> ... -> BrtEndSheet
+     * 记录序列：BrtBeginSheet -> BrtWsProp -> BrtWsDim -> BrtBeginWsViews -> ... -> BrtBeginSheetData -> ... -> BrtEndSheet
      */
     public byte[] writeSheet(CellDataSupplier supplier, int rowCount, int columnCount) 
             throws IOException {
@@ -26,6 +26,9 @@ public final class SheetWriter {
         
         // BrtBeginSheet
         w.writeEmptyRecord(Biff12RecordType.BrtBeginSheet);
+        
+        // BrtWsProp - Sheet属性（必需）
+        writeBrtWsProp(w);
         
         // BrtWsDim - Sheet维度
         // 结构：rwFirst(4) + rwLast(4) + colFirst(4) + colLast(4)
@@ -36,6 +39,9 @@ public final class SheetWriter {
             w.writeIntLE(0);           // colFirst
             w.writeIntLE(columnCount - 1); // colLast
         }
+        
+        // 视图记录（从用户文件复制）
+        writeViewRecords(w);
         
         // BrtBeginSheetData
         w.writeEmptyRecord(Biff12RecordType.BrtBeginSheetData);
@@ -57,6 +63,9 @@ public final class SheetWriter {
         
         // BrtEndSheetData
         w.writeEmptyRecord(Biff12RecordType.BrtEndSheetData);
+        
+        // 页面设置相关记录（从用户文件复制）
+        writePageSetupRecords(w);
         
         // BrtEndSheet
         w.writeEmptyRecord(Biff12RecordType.BrtEndSheet);
@@ -103,7 +112,13 @@ public final class SheetWriter {
     private void writeCell(Biff12Writer w, int row, int col, CellData data) throws IOException {
         switch (data.getType()) {
             case NUMBER:
-                writeBrtCellReal(w, row, col, (Double) data.getValue());
+                double num = (Double) data.getValue();
+                // 对于整数，使用 BrtCellRk
+                if (num == Math.floor(num) && num >= -536870912 && num <= 536870911) {
+                    writeBrtCellRk(w, row, col, (int) num);
+                } else {
+                    writeBrtCellReal(w, row, col, num);
+                }
                 break;
             case TEXT:
                 int sstIdx = sst.addString((String) data.getValue());
@@ -118,6 +133,24 @@ public final class SheetWriter {
             default:
                 break;
         }
+    }
+    
+    /**
+     * 写入BrtCellRk记录（整数）
+     * 结构：cell(8) + rk(4)
+     * RK 编码：使用 IEEE 754 double 的高 32 位
+     */
+    private void writeBrtCellRk(Biff12Writer w, int row, int col, int value) 
+            throws IOException {
+        int recordSize = 8 + 4;  // cell + rk
+        
+        w.writeRecordHeader(Biff12RecordType.BrtCellRk, recordSize);
+        w.writeCell(col, 0);     // cell结构
+        
+        // RK 编码：取 IEEE 754 double 的高 32 位
+        long bits = Double.doubleToLongBits((double)value);
+        int rk = (int)(bits >> 32);
+        w.writeIntLE(rk);
     }
     
     /**
@@ -168,5 +201,99 @@ public final class SheetWriter {
         
         w.writeRecordHeader(Biff12RecordType.BrtCellBlank, recordSize);
         w.writeCell(col, 0);  // cell结构
+    }
+    
+    /**
+     * 写入BrtWsProp记录（Sheet属性）
+     * 从用户文件复制的实际数据
+     */
+    private void writeBrtWsProp(Biff12Writer w) throws IOException {
+        byte[] data = {
+            (byte)0xC9, 0x04, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF,
+            (byte)0xFF, (byte)0xFF, (byte)0xFF, 0x00, 0x00, 0x00, 0x00
+        };
+        
+        w.writeRecordHeader(Biff12RecordType.BrtWsProp, data.length);
+        w.writeBytes(data);
+    }
+    
+/**
+     * 写入视图相关记录（从用户文件复制）
+     */
+    private void writeViewRecords(Biff12Writer w) throws IOException {
+        // BrtBeginWsViews
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginWsViews);
+        
+        // BrtBeginWsView (30 bytes data)
+        byte[] wsViewData = {
+            (byte)0xDC, (byte)0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x40, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        };
+        w.writeRecordHeader(Biff12RecordType.BrtBeginWsView, wsViewData.length);
+        w.writeBytes(wsViewData);
+        
+        // BrtSel (36 bytes data)
+        byte[] selData = {
+            0x03, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00,
+            0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00,
+            0x06, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00,
+            0x07, 0x00, 0x00, 0x00
+        };
+        w.writeRecordHeader(Biff12RecordType.BrtSel, selData.length);
+        w.writeBytes(selData);
+        
+        // BrtEndWsView
+        w.writeEmptyRecord(Biff12RecordType.BrtEndWsView);
+        
+        // BrtEndWsViews
+        w.writeEmptyRecord(Biff12RecordType.BrtEndWsViews);
+        
+        // BrtWsFmtInfo (12 bytes data)
+        byte[] fmtInfoData = {
+            0x00, 0x09, 0x00, 0x00, 0x08, 0x00, 0x0E, 0x01,
+            0x00, 0x00, 0x00, 0x00
+        };
+        w.writeRecordHeader(485, fmtInfoData.length);
+        w.writeBytes(fmtInfoData);
+    }
+    
+    /**
+     * 写入页面设置相关记录（从用户文件复制）
+     */
+    private void writePageSetupRecords(Biff12Writer w) throws IOException {
+        // BrtDrawing (66 bytes data)
+        byte[] drawingData = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+            0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x01, 0x00, 0x00, 0x00
+        };
+        w.writeRecordHeader(535, drawingData.length);
+        w.writeBytes(drawingData);
+        
+        // BrtPageSetupView (2 bytes data)
+        byte[] psViewData = {0x10, 0x00};
+        w.writeRecordHeader(477, psViewData.length);
+        w.writeBytes(psViewData);
+        
+        // BrtPageSetup (48 bytes data)
+        byte[] psData = {
+            0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xE8, 0x3F, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xE8, 0x3F, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xF0, 0x3F, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xF0, 0x3F, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xE0, 0x3F, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xE0, 0x3F
+        };
+        w.writeRecordHeader(476, psData.length);
+        w.writeBytes(psData);
     }
 }

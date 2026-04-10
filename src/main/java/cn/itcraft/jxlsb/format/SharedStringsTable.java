@@ -63,14 +63,18 @@ public final class SharedStringsTable {
     
     /**
      * 写入BrtSSTItem记录
-     * 结构：string(XLWideString)
+     * 结构：RichStr = flags(1) + XLWideString
      */
     private void writeBrtSSTItem(Biff12Writer w, String str) throws IOException {
-        // 计算大小
         int strLen = str.length();
-        int recordSize = 4 + strLen * 2;  // 字符数(4) + UTF-16LE字符
+        int recordSize = 1 + 4 + strLen * 2;  // flags(1) + 字符数(4) + UTF-16LE字符
         
         w.writeRecordHeader(Biff12RecordType.BrtSSTItem, recordSize);
+        
+        // RichStr flags (1 byte): fRichStr=0, fExtStr=0
+        w.writeBytes(new byte[]{0});
+        
+        // XLWideString
         w.writeXLWideString(str);
     }
 }
