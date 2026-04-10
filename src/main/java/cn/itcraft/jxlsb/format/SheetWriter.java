@@ -2,6 +2,7 @@ package cn.itcraft.jxlsb.format;
 
 import cn.itcraft.jxlsb.api.CellData;
 import cn.itcraft.jxlsb.api.CellDataSupplier;
+import cn.itcraft.jxlsb.data.CellType;
 import java.io.IOException;
 
 /**
@@ -13,11 +14,26 @@ public final class SheetWriter {
     private static final int MIN_RK_INTEGER = -536870912;
     private static final int MAX_RK_INTEGER = 536870911;
     private static final long EXCEL_EPOCH_MILLIS = -2208988800000L;
+    private static final String DEFAULT_DATE_FORMAT = "m/d/yy h:mm";
     
     private final SharedStringsTable sst;
+    private final StylesWriter stylesWriter;
+    private int defaultDateStyleId;
     
     public SheetWriter(SharedStringsTable sst) {
         this.sst = sst;
+        this.stylesWriter = null;
+        this.defaultDateStyleId = 0;
+    }
+    
+    public SheetWriter(SharedStringsTable sst, StylesWriter stylesWriter) {
+        this.sst = sst;
+        this.stylesWriter = stylesWriter;
+        if (stylesWriter != null) {
+            this.defaultDateStyleId = stylesWriter.addDateFormat(DEFAULT_DATE_FORMAT);
+        } else {
+            this.defaultDateStyleId = 0;
+        }
     }
     
     /**

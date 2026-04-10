@@ -67,13 +67,19 @@ public final class SheetReader implements AutoCloseable {
     private int processSheetBuffer(byte[] buffer, int length, RowHandler handler) {
         int pos = 0;
         
-        while (pos + 8 <= length) {
-            int recordType = readIntLE(buffer, pos);
-            int recordSize = readIntLE(buffer, pos + 4);
-            pos += 8;
+        while (pos + 2 <= length) {
+            int recordType = VarIntReader.readVarInt(buffer, pos);
+            int typeSize = VarIntReader.varIntSize(recordType);
+            pos += typeSize;
+            
+            if (pos >= length) break;
+            
+            int recordSize = VarIntReader.readVarSize(buffer, pos);
+            int sizeBytes = VarIntReader.varSizeSize(recordSize);
+            pos += sizeBytes;
             
             if (recordSize > 0 && pos + recordSize > length) {
-                return pos - 8;
+                return pos - typeSize - sizeBytes;
             }
             
             try {
