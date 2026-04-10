@@ -58,5 +58,13 @@ public final class Biff12RecordType {
     public static final int BrtWsFmtInfo = 485;
     public static final int BrtDrawing = 535;
     
+    public static final int BrtFmt = 44;
+    public static final int BrtFont = 43;
+    public static final int BrtFill = 45;
+    public static final int BrtBorder = 46;
+    public static final int BrtXF = 47;
+    public static final int BrtBeginStyleSheet = 370;
+    public static final int BrtEndStyleSheet = 371;
+    
     private Biff12RecordType() {}
 }
