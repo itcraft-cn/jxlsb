@@ -87,6 +87,14 @@
             <version>${slf4j.version}</version>
             <scope>test</scope>
         </dependency>
+        
+        <!-- FastExcel for XLSX comparison -->
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel</artifactId>
+            <version>0.18.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     
     <build>
