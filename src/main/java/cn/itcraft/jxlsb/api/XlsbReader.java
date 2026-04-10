@@ -1,75 +1,125 @@
 package cn.itcraft.jxlsb.api;
 
-import cn.itcraft.jxlsb.data.OffHeapSheet;
-import cn.itcraft.jxlsb.data.OffHeapRow;
-import cn.itcraft.jxlsb.data.OffHeapCell;
-import cn.itcraft.jxlsb.io.OffHeapInputStream;
-import cn.itcraft.jxlsb.format.RecordParser;
-import cn.itcraft.jxlsb.format.XlsbFormatReader;
+import cn.itcraft.jxlsb.container.*;
+import cn.itcraft.jxlsb.container.SheetInfo;
+import cn.itcraft.jxlsb.format.*;
+import cn.itcraft.jxlsb.data.CellType;
 import java.nio.file.Path;
-import java.io.IOException;
-import java.util.Objects;
+import java.io.*;
+import java.util.*;
 
 /**
- * XLSB文件读取器
+ * XLSB文件流式读取器
+ * 
+ * <p>提供两种API风格：
+ * <ul>
+ *   <li>forEachSheet：遍历所有Sheet</li>
+ *   <li>forEachRow：遍历指定Sheet的所有行</li>
+ * </ul>
+ * 
+ * <p>使用Builder模式构造：
+ * <pre>
+ * XlsbReader reader = XlsbReader.builder()
+ *     .path(Paths.get("input.xlsb"))
+ *     .build();
+ * </pre>
  * 
  * @author AI架构师
  * @since 1.0.0
  */
 public final class XlsbReader implements AutoCloseable {
     
-    private final OffHeapInputStream inputStream;
-    private final RecordParser recordParser;
-    private final XlsbFormatReader formatReader;
+    private final XlsbContainerReader containerReader;
+    private final SharedStringsTable sst;
     
-    private XlsbReader(Builder builder) throws IOException {
-        Objects.requireNonNull(builder.path, "Path must not be null");
-        this.inputStream = new OffHeapInputStream(builder.path);
-        this.recordParser = new RecordParser();
-        this.formatReader = new XlsbFormatReader();
+    private XlsbReader(Path path) throws IOException {
+        this.containerReader = new XlsbContainerReader(path);
+        this.sst = loadSharedStringsTable();
     }
     
-    public void readSheets(SheetHandler handler) throws IOException {
-        inputStream.streamProcess(block -> {
-            formatReader.readSheet(block, handler);
-        });
+    private SharedStringsTable loadSharedStringsTable() throws IOException {
+        SharedStringsTable table = new SharedStringsTable();
+        
+        if (containerReader.hasSharedStrings()) {
+            try (InputStream stream = containerReader.getSharedStringsStream()) {
+                table.load(stream);
+            }
+        }
+        
+        return table;
     }
     
-    public OffHeapSheet readSheet(int sheetIndex) throws IOException {
-        SheetCollector collector = new SheetCollector(sheetIndex);
-        readSheets(collector);
-        return collector.getSheet();
+    public List<SheetInfo> getSheetInfos() throws IOException {
+        return containerReader.getSheetInfos();
     }
     
-    public static Builder builder() {
-        return new Builder();
+    public void forEachSheet(SheetConsumer consumer) throws Exception {
+        List<SheetInfo> sheets = getSheetInfos();
+        
+        for (int i = 0; i < sheets.size(); i++) {
+            SheetInfo info = sheets.get(i);
+            
+            try (SheetReader reader = new SheetReader(containerReader.getSheetStream(i), sst)) {
+                consumer.accept(info, reader);
+            }
+        }
+    }
+    
+    public void forEachRow(int sheetIndex, RowConsumer consumer) throws IOException {
+        try (SheetReader reader = getSheetReader(sheetIndex)) {
+            reader.readRows(new RowHandler() {
+                private int currentRow = -1;
+                
+                @Override
+                public void onRowStart(int rowIndex, int columnCount) {
+                    currentRow = rowIndex;
+                    consumer.onRowStart(rowIndex);
+                }
+                
+                @Override
+                public void onCellNumber(int row, int col, double value) {
+                    consumer.onCell(row, col, CellData.number(value));
+                }
+                
+                @Override
+                public void onCellText(int row, int col, String value) {
+                    consumer.onCell(row, col, CellData.text(value));
+                }
+                
+                @Override
+                public void onCellBoolean(int row, int col, boolean value) {
+                    consumer.onCell(row, col, CellData.bool(value));
+                }
+                
+                @Override
+                public void onCellBlank(int row, int col) {
+                    consumer.onCell(row, col, CellData.blank());
+                }
+                
+                @Override
+                public void onCellDate(int row, int col, double excelDate) {
+                    consumer.onCell(row, col, CellData.date((long)excelDate));
+                }
+                
+                @Override
+                public void onRowEnd(int rowIndex) {
+                    consumer.onRowEnd(rowIndex);
+                }
+            });
+        }
+    }
+    
+    private SheetReader getSheetReader(int sheetIndex) throws IOException {
+        return new SheetReader(containerReader.getSheetStream(sheetIndex), sst);
     }
     
     @Override
     public void close() throws IOException {
-        inputStream.close();
+        containerReader.close();
     }
     
-    private static final class SheetCollector implements SheetHandler {
-        private final int targetIndex;
-        private OffHeapSheet collected;
-        
-        SheetCollector(int targetIndex) {
-            this.targetIndex = targetIndex;
-        }
-        
-        @Override
-        public void handle(OffHeapSheet sheet) throws Exception {
-            if (sheet.getSheetIndex() == targetIndex) {
-                this.collected = sheet;
-            } else {
-                sheet.close();
-            }
-        }
-        
-        OffHeapSheet getSheet() {
-            return collected;
-        }
+    public static Builder builder() {
+        return new Builder();
     }
     
     public static final class Builder {
@@ -81,7 +131,8 @@ public final class XlsbReader implements AutoCloseable {
         }
         
         public XlsbReader build() throws IOException {
-            return new XlsbReader(this);
+            Objects.requireNonNull(path, "Path must not be null");
+            return new XlsbReader(path);
         }
     }
 }

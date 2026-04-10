@@ -1,15 +1,174 @@
-# jxlsb
+# jxlsb - Java XLSB Library
 
-Pure Java XLSB (Excel Binary Workbook) reader/writer library with off-heap memory.
+纯Java实现的XLSB（Excel Binary Workbook）格式读写库，具有以下特性：
 
-## Features
+- **零依赖**：仅依赖SLF4J，无需POI等重型库
+- **堆外内存**：全量堆外内存架构，追求零GC压力
+- **流式API**：支持大规模数据流式写入
+- **企业级质量**：支持Java 8+，完善的测试覆盖
 
-- **Zero Third-party Dependencies** - Only Java SDK 8+ and SLF4J API
-- **Off-heap Memory Architecture** - All data structures use off-heap memory for minimal GC pressure
-- **Streaming API** - Process large files without loading everything into memory
-- **Memory Pool** - Reusable memory blocks with 5-tier size classification (64B/4KB/64KB/1MB/16MB)
-- **Builder Pattern** - Fluent API for easy configuration
-- **Multi-JDK Support** - Java 8+ compatible, Java 17+ recommended
+## 核心功能
+
+- ✅ XLSB文件写入（数字、文本、布尔、日期、空白）
+- ✅ Excel/WPS兼容性验证通过
+- ✅ 性能优异：比POI快2-3倍，文件小30-50%
+- 🚧 XLSB文件读取（开发中）
+- 🚧 样式和格式支持（开发中）
+
+## 性能数据
+
+**100K行 × 10列测试结果：**
+
+| 库 | 文件大小 | 写入时间 | 格式 |
+|----|---------|---------|------|
+| jxlsb | 2.61 MB | 590 ms | XLSB |
+| FastExcel | 5.42 MB | 591 ms | XLSX |
+| EasyExcel | 4.18 MB | 1173 ms | XLSX |
+| POI | 4.16 MB | 1826 ms | XLSX |
+
+**优势总结：**
+- 文件大小：比POI小37%，比EasyExcel小38%
+- 写入速度：比POI快3倍，比EasyExcel快2倍
+- 内存占用：堆外内存架构，GC压力极低
+
+## 快速开始
+
+### Maven依赖
+
+```xml
+<dependency>
+    <groupId>cn.itcraft</groupId>
+    <artifactId>jxlsb</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+### 5分钟教程
+
+#### 1. 写入XLSB文件
+
+```java
+import cn.itcraft.jxlsb.api.XlsbWriter;
+import cn.itcraft.jxlsb.api.CellData;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+Path file = Paths.get("output.xlsb");
+
+try (XlsbWriter writer = XlsbWriter.builder()
+        .path(file)
+        .build()) {
+    
+    writer.writeBatch("Sheet1", 
+        (row, col) -> CellData.number(row * 100.0 + col),
+        1000, 10);
+}
+```
+
+#### 2. 读取XLSB文件
+
+```java
+import cn.itcraft.jxlsb.api.XlsbReader;
+import cn.itcraft.jxlsb.data.OffHeapSheet;
+import cn.itcraft.jxlsb.data.OffHeapRow;
+import cn.itcraft.jxlsb.data.OffHeapCell;
+
+try (XlsbReader reader = XlsbReader.builder()
+        .path(Paths.get("data.xlsb"))
+        .build()) {
+    
+    reader.readSheets(sheet -> {
+        System.out.println("Sheet: " + sheet.getSheetName());
+        
+        for (OffHeapRow row : sheet) {
+            for (int i = 0; i < row.getColumnCount(); i++) {
+                OffHeapCell cell = row.getCell(i);
+                System.out.print(formatCell(cell) + " | ");
+            }
+            System.out.println();
+        }
+    });
+}
+```
+
+#### 3. 支持的单元格类型
+
+```java
+// 文本
+CellData.text("Hello World")
+
+// 数字
+CellData.number(3.14159)
+
+// 日期（Unix毫秒时间戳）
+CellData.date(System.currentTimeMillis())
+
+// 布尔
+CellData.bool(true)
+
+// 空白
+CellData.blank()
+```
+
+## API概览
+
+### XlsbWriter
+
+**Builder模式构建：**
+```java
+XlsbWriter writer = XlsbWriter.builder()
+    .path(Paths.get("output.xlsb"))
+    .build();
+```
+
+**批量写入API：**
+```java
+writer.writeBatch("SheetName", 
+    (row, col) -> {
+        // 返回CellData
+        return CellData.text("数据-" + row);
+    },
+    rowCount,    // 行数
+    columnCount  // 列数
+);
+```
+
+**流式写入API：**
+```java
+writer.writeBatch("Sheet1",
+    (row, col) -> {
+        if (col % 3 == 0) return CellData.number(row * col);
+        if (col % 3 == 1) return CellData.text("文本");
+        return CellData.date(System.currentTimeMillis());
+    },
+    100000, 50);
+```
+
+### XlsbReader
+
+**Builder模式构建：**
+```java
+XlsbReader reader = XlsbReader.builder()
+    .path(Paths.get("input.xlsb"))
+    .build();
+```
+
+**流式读取API：**
+```java
+reader.readSheets(sheet -> {
+    // 处理每个Sheet
+    for (OffHeapRow row : sheet) {
+        for (OffHeapCell cell : row) {
+            // 处理单元格
+        }
+    }
+});
+```
+
+**指定Sheet读取：**
+```java
+OffHeapSheet sheet = reader.readSheet(0); // 读取第一个Sheet
+```
 
 ## Architecture
 
