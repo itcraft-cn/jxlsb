@@ -109,7 +109,9 @@ class StressTest {
         System.out.println("Large Text Cells Test");
         System.out.println("════════════════════════════════════════");
         
-        String largeText = "A".repeat(50000);
+        StringBuilder sb = new StringBuilder(50000);
+        for (int i = 0; i < 50000; i++) sb.append('A');
+        String largeText = sb.toString();
         
         long startTime = System.currentTimeMillis();
         

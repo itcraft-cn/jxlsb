@@ -29,9 +29,9 @@ public class PerformanceComparison {
         int[] testSizes = {1_000, 10_000, 100_000};
         
         for (int rows : testSizes) {
-            System.out.println("═".repeat(60));
+            System.out.println(repeat("═", 60));
             System.out.println("测试规模: " + formatNumber(rows) + " 行 × 10 列");
-            System.out.println("═".repeat(60));
+            System.out.println(repeat("═", 60));
             
             compareLibraries(tempDir, rows, 10);
             System.out.println();
@@ -198,6 +198,12 @@ public class PerformanceComparison {
         if (num >= 1_000_000) return (num / 1_000_000) + "M";
         if (num >= 1_000) return (num / 1_000) + "K";
         return String.valueOf(num);
+    }
+    
+    private static String repeat(String s, int count) {
+        StringBuilder sb = new StringBuilder(s.length() * count);
+        for (int i = 0; i < count; i++) sb.append(s);
+        return sb.toString();
     }
     
     private static final class Result {

@@ -31,8 +31,11 @@ class XlsbWriterStructureTest {
 
         try (ZipFile zf = new ZipFile(file.toFile())) {
             System.out.println("ZIP entries:");
-            zf.entries().asIterator().forEachRemaining(e -> 
-                System.out.println("  " + e.getName() + " (" + e.getSize() + " bytes)"));
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> entries = zf.entries();
+            while (entries.hasMoreElements()) {
+                java.util.zip.ZipEntry e = entries.nextElement();
+                System.out.println("  " + e.getName() + " (" + e.getSize() + " bytes)");
+            }
             
             assertNotNull(zf.getEntry("[Content_Types].xml"), "Missing Content_Types");
             assertNotNull(zf.getEntry("_rels/.rels"), "Missing root rels");
