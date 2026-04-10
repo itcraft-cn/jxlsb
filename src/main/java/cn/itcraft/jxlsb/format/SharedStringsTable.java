@@ -1,6 +1,10 @@
 package cn.itcraft.jxlsb.format;
 
+import cn.itcraft.jxlsb.memory.OffHeapAllocator;
+import cn.itcraft.jxlsb.memory.AllocatorFactory;
+import cn.itcraft.jxlsb.memory.MemoryBlock;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +47,79 @@ public final class SharedStringsTable {
     
     public int size() {
         return strings.size();
+    }
+    
+    /**
+     * 从sharedStrings.bin加载字符串表
+     * 
+     * @param inputStream sharedStrings.bin输入流
+     * @throws IOException IO异常
+     */
+    public void load(InputStream inputStream) throws IOException {
+        OffHeapAllocator allocator = AllocatorFactory.createDefaultAllocator();
+        
+        try {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            int offset = 0;
+            
+            while ((bytesRead = inputStream.read(buffer, offset, buffer.length - offset)) != -1) {
+                offset += bytesRead;
+                
+                if (offset >= buffer.length) {
+                    processBuffer(buffer, offset, allocator);
+                    offset = 0;
+                }
+            }
+            
+            if (offset > 0) {
+                processBuffer(buffer, offset, allocator);
+            }
+        } finally {
+            inputStream.close();
+        }
+    }
+    
+    private void processBuffer(byte[] buffer, int length, OffHeapAllocator allocator) throws IOException {
+        int pos = 0;
+        
+        while (pos + 8 <= length) {
+            int recordType = readIntLE(buffer, pos);
+            int recordSize = readIntLE(buffer, pos + 4);
+            pos += 8;
+            
+            if (recordType == Biff12RecordType.BrtSSTItem && pos + recordSize <= length) {
+                String text = parseSSTItem(buffer, pos, recordSize);
+                strings.add(text);
+                pos += recordSize;
+            } else if (recordType == Biff12RecordType.BrtBeginSst || recordType == Biff12RecordType.BrtEndSst) {
+                pos += recordSize;
+            } else {
+                pos += recordSize;
+            }
+        }
+    }
+    
+    private String parseSSTItem(byte[] buffer, int offset, int size) {
+        int flags = buffer[offset];
+        int strOffset = offset + 1;
+        
+        int length = readIntLE(buffer, strOffset);
+        if (length == 0) {
+            return "";
+        }
+        
+        byte[] strBytes = new byte[length * 2];
+        System.arraycopy(buffer, strOffset + 4, strBytes, 0, Math.min(strBytes.length, size - 5));
+        
+        return new String(strBytes, StandardCharsets.UTF_16LE);
+    }
+    
+    private int readIntLE(byte[] buffer, int offset) {
+        return (buffer[offset] & 0xFF) | 
+               ((buffer[offset + 1] & 0xFF) << 8) |
+               ((buffer[offset + 2] & 0xFF) << 16) |
+               ((buffer[offset + 3] & 0xFF) << 24);
     }
     
     /**
