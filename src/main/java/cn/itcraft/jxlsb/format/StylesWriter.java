@@ -42,7 +42,8 @@ public final class StylesWriter {
      * BIFF12结构: BrtBeginStyleSheet -> BrtFmt -> BrtFont -> BrtFill -> BrtBorder -> BrtXF -> BrtEndStyleSheet
      */
     public byte[] toBiff12Bytes() throws IOException {
-        Biff12Writer w = new Biff12Writer();
+        // styles.bin通常7-8KB，设置16KB缓冲区
+        Biff12Writer w = new Biff12Writer(16 * 1024);
         
         w.writeEmptyRecord(Biff12RecordType.BrtBeginStyleSheet);
         

@@ -21,7 +21,8 @@ public final class WorkbookWriter {
     }
     
     public byte[] toBiff12Bytes() throws IOException {
-        Biff12Writer w = new Biff12Writer();
+        // workbook.bin通常很小（几百字节），设置4KB缓冲区足够
+        Biff12Writer w = new Biff12Writer(4 * 1024);
         
         w.writeEmptyRecord(Biff12RecordType.BrtBeginBook);
         

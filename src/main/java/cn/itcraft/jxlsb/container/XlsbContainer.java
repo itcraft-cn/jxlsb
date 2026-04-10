@@ -17,7 +17,8 @@ public final class XlsbContainer implements AutoCloseable {
     }
     
     public static XlsbContainer create(Path path) throws IOException {
-        OutputStream fileOut = Files.newOutputStream(path);
+        // 使用256KB缓冲区，减少磁盘IO次数
+        OutputStream fileOut = new BufferedOutputStream(Files.newOutputStream(path), 256 * 1024);
         ZipOutputStream zipOut = new ZipOutputStream(fileOut);
         return new XlsbContainer(zipOut, fileOut);
     }

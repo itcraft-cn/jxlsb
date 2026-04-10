@@ -67,13 +67,16 @@ public final class Biff12Writer {
     }
     
     /**
-     * 写入小端序int
+     * 写入小端序int（批量写入优化）
      */
     public void writeIntLE(int value) throws IOException {
-        baos.write(value & 0xFF);
-        baos.write((value >> 8) & 0xFF);
-        baos.write((value >> 16) & 0xFF);
-        baos.write((value >> 24) & 0xFF);
+        // 批量写入4字节，减少方法调用次数
+        byte[] buffer = new byte[4];
+        buffer[0] = (byte)(value & 0xFF);
+        buffer[1] = (byte)((value >> 8) & 0xFF);
+        buffer[2] = (byte)((value >> 16) & 0xFF);
+        buffer[3] = (byte)((value >> 24) & 0xFF);
+        baos.write(buffer);
     }
     
     /**
