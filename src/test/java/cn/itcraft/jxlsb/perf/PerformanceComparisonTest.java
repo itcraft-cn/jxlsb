@@ -4,19 +4,39 @@ import cn.itcraft.jxlsb.api.XlsbWriter;
 import cn.itcraft.jxlsb.api.CellData;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.util.TempFile;
+import org.apache.poi.util.DefaultTempFileCreationStrategy;
 import org.dhatim.fastexcel.Workbook;
 import org.dhatim.fastexcel.Worksheet;
 import com.alibaba.excel.EasyExcel;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import java.nio.file.*;
 import java.io.*;
 import java.util.*;
 import java.time.LocalDateTime;
 
-/**
- * 性能和文件大小对比测试
- */
 class PerformanceComparisonTest {
+    
+    private Path poiTempDir;
+    
+    @BeforeEach
+    void setUp() throws IOException {
+        poiTempDir = Files.createTempDirectory("poi-temp-");
+        TempFile.setTempFileCreationStrategy(new DefaultTempFileCreationStrategy(poiTempDir.toFile()));
+    }
+    
+    @AfterEach
+    void tearDown() throws IOException {
+        if (poiTempDir != null) {
+            Files.walk(poiTempDir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(path -> {
+                    try { Files.deleteIfExists(path); } catch (IOException ignored) {}
+                });
+        }
+    }
     
     @Test
     void test1000Rows() throws IOException {
@@ -65,15 +85,9 @@ class PerformanceComparisonTest {
             (double)fastexcel.timeMs / jxlsb.timeMs,
             (1 - (double)jxlsb.size / fastexcel.size) * 100);
         
-        // 清理
         Files.walk(tempDir)
             .sorted(Comparator.reverseOrder())
-            .forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {
-                }
-            });
+            .forEach(path -> { try { Files.deleteIfExists(path); } catch (IOException ignored) {} });
     }
     
     private Result testPOI(Path tempDir, int rows, int cols) throws IOException {
