@@ -4,11 +4,7 @@ import cn.itcraft.jxlsb.memory.MemoryBlock;
 import cn.itcraft.jxlsb.memory.OffHeapAllocator;
 import cn.itcraft.jxlsb.exception.MemoryAllocationException;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.MemorySession;
-import java.lang.foreign.Addressable;
-import java.lang.foreign.Linker;
-import java.lang.foreign.SymbolLookup;
-import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Arena;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -17,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>使用Foreign Memory API（MemorySegment）管理堆外内存，
  * 更安全、更现代化，性能与Unsafe相当。
  * 
- * <p>注意：需要Java 17+并启用预览特性，或Java 21+正式版。
+ * <p>注意：需要Java 21+（正式版）或Java 17-20（启用预览特性）。
  * 
  * @author AI架构师
  * @since 1.0.0
@@ -26,10 +22,10 @@ public final class MemorySegmentAllocator implements OffHeapAllocator {
     
     private static final String STRATEGY_NAME = "MemorySegment-ForeignAPI";
     private final AtomicLong totalAllocated = new AtomicLong(0);
-    private final MemorySession globalSession;
+    private final Arena globalArena;
     
     public MemorySegmentAllocator() {
-        this.globalSession = MemorySession.global();
+        this.globalArena = Arena.ofShared();
     }
     
     @Override
@@ -39,7 +35,7 @@ public final class MemorySegmentAllocator implements OffHeapAllocator {
         }
         
         try {
-            MemorySegment segment = MemorySegment.allocateNative(size, globalSession);
+            MemorySegment segment = globalArena.allocate(size);
             totalAllocated.addAndGet(size);
             
             return new MemorySegmentBlock(segment, size, this);
