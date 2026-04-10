@@ -8,12 +8,12 @@ import java.lang.foreign.Arena;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Java 17+堆外内存分配器实现
+ * Java 23+堆外内存分配器实现
  * 
  * <p>使用Foreign Memory API（MemorySegment）管理堆外内存，
  * 更安全、更现代化，性能与Unsafe相当。
  * 
- * <p>注意：需要Java 21+（正式版）或Java 17-20（启用预览特性）。
+ * <p>需要Java 22+（Foreign Memory API正式版）。
  * 
  * @author AI架构师
  * @since 1.0.0

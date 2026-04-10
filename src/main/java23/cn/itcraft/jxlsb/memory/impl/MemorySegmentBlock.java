@@ -5,7 +5,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 /**
- * Java 17+内存块实现
+ * Java 23+内存块实现
  * 
  * <p>基于MemorySegment的堆外内存块，使用Foreign Memory API访问。
  * 使用小端序（Little-Endian）存储数据。

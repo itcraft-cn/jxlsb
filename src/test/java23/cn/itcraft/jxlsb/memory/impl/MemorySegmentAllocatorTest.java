@@ -7,7 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("MemorySegmentAllocator Test (Java 17+)")
+@DisplayName("MemorySegmentAllocator Test (Java 23+)")
 class MemorySegmentAllocatorTest {
     
     private OffHeapAllocator allocator;
