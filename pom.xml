@@ -57,6 +57,36 @@
             <version>${jmh.version}</version>
             <scope>test</scope>
         </dependency>
+        
+        <!-- Apache POI for XLSX comparison -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>5.2.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- EasyExcel for XLSX comparison -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>3.3.3</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- SLF4J Simple for test logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     
     <build>
@@ -71,6 +101,13 @@
                     <compilerArgs>
                         <arg>-Xlint:all</arg>
                     </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.openjdk.jmh</groupId>
+                            <artifactId>jmh-generator-annprocess</artifactId>
+                            <version>${jmh.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             
