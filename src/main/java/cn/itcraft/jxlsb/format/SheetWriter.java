@@ -113,7 +113,6 @@ public final class SheetWriter {
         switch (data.getType()) {
             case NUMBER:
                 double num = (Double) data.getValue();
-                // 对于整数，使用 BrtCellRk
                 if (num == Math.floor(num) && num >= -536870912 && num <= 536870911) {
                     writeBrtCellRk(w, row, col, (int) num);
                 } else {
@@ -124,6 +123,11 @@ public final class SheetWriter {
                 int sstIdx = sst.addString((String) data.getValue());
                 writeBrtCellIsst(w, row, col, sstIdx);
                 break;
+            case DATE:
+                long timestamp = (Long) data.getValue();
+                double excelDate = toExcelDate(timestamp);
+                writeBrtCellReal(w, row, col, excelDate);
+                break;
             case BOOLEAN:
                 writeBrtCellBool(w, row, col, (Boolean) data.getValue());
                 break;
@@ -133,6 +137,16 @@ public final class SheetWriter {
             default:
                 break;
         }
+    }
+    
+    /**
+     * 将Unix时间戳转换为Excel日期序列号
+     * Excel日期从1900-01-01开始（序列号1.0）
+     */
+    private double toExcelDate(long timestamp) {
+        long excelEpochMillis = -2208988800000L; // 1900-01-01 00:00:00 UTC
+        double days = (timestamp - excelEpochMillis) / (24.0 * 60 * 60 * 1000);
+        return days + 1.0; // Excel序列号从1开始
     }
     
     /**
