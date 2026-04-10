@@ -92,7 +92,7 @@ final class PooledMemoryBlock implements MemoryBlock {
     }
     
     @Override
-    public void close() {
+    public synchronized void close() {
         if (!closed) {
             closed = true;
             pool.release(delegate, classSize);

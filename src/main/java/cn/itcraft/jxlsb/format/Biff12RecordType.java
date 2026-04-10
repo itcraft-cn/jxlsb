@@ -53,5 +53,10 @@ public final class Biff12RecordType {
     public static final int BrtBeginSst = 159;
     public static final int BrtEndSst = 160;
     
+    public static final int BrtPageSetup = 476;
+    public static final int BrtPageSetupView = 477;
+    public static final int BrtWsFmtInfo = 485;
+    public static final int BrtDrawing = 535;
+    
     private Biff12RecordType() {}
 }

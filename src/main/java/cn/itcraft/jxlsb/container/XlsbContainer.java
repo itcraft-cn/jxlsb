@@ -1,6 +1,7 @@
 package cn.itcraft.jxlsb.container;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -8,14 +9,17 @@ import java.util.zip.ZipOutputStream;
 public final class XlsbContainer implements AutoCloseable {
     
     private final ZipOutputStream zipOut;
+    private final OutputStream fileOut;
     
-    private XlsbContainer(ZipOutputStream zipOut) {
+    private XlsbContainer(ZipOutputStream zipOut, OutputStream fileOut) {
         this.zipOut = zipOut;
+        this.fileOut = fileOut;
     }
     
     public static XlsbContainer create(Path path) throws IOException {
-        ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(path.toFile()));
-        return new XlsbContainer(zipOut);
+        OutputStream fileOut = Files.newOutputStream(path);
+        ZipOutputStream zipOut = new ZipOutputStream(fileOut);
+        return new XlsbContainer(zipOut, fileOut);
     }
     
     public void addEntry(String name, byte[] data) throws IOException {
@@ -32,7 +36,11 @@ public final class XlsbContainer implements AutoCloseable {
     
     @Override
     public void close() throws IOException {
-        zipOut.finish();
-        zipOut.close();
+        try {
+            zipOut.finish();
+        } finally {
+            zipOut.close();
+            fileOut.close();
+        }
     }
 }

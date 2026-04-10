@@ -98,6 +98,13 @@ public final class XlsbFormatReader {
             sheetIndex = 0;
             rowIndex = 0;
             columnCount = 0;
+            for (CellRecord record : cellRecords) {
+                try {
+                    record.close();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
             cellRecords.clear();
         }
     }

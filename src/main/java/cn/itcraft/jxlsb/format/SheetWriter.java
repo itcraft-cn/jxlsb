@@ -10,6 +10,10 @@ import java.io.IOException;
  */
 public final class SheetWriter {
     
+    private static final int MIN_RK_INTEGER = -536870912;
+    private static final int MAX_RK_INTEGER = 536870911;
+    private static final long EXCEL_EPOCH_MILLIS = -2208988800000L;
+    
     private final SharedStringsTable sst;
     
     public SheetWriter(SharedStringsTable sst) {
@@ -113,7 +117,7 @@ public final class SheetWriter {
         switch (data.getType()) {
             case NUMBER:
                 double num = (Double) data.getValue();
-                if (num == Math.floor(num) && num >= -536870912 && num <= 536870911) {
+                if (num == Math.floor(num) && num >= MIN_RK_INTEGER && num <= MAX_RK_INTEGER) {
                     writeBrtCellRk(w, row, col, (int) num);
                 } else {
                     writeBrtCellReal(w, row, col, num);
@@ -135,7 +139,7 @@ public final class SheetWriter {
                 writeBrtCellBlank(w, row, col);
                 break;
             default:
-                break;
+                throw new IllegalArgumentException("Unknown cell type: " + data.getType());
         }
     }
     
@@ -144,9 +148,8 @@ public final class SheetWriter {
      * Excel日期从1900-01-01开始（序列号1.0）
      */
     private double toExcelDate(long timestamp) {
-        long excelEpochMillis = -2208988800000L; // 1900-01-01 00:00:00 UTC
-        double days = (timestamp - excelEpochMillis) / (24.0 * 60 * 60 * 1000);
-        return days + 1.0; // Excel序列号从1开始
+        double days = (timestamp - EXCEL_EPOCH_MILLIS) / (24.0 * 60 * 60 * 1000);
+        return days + 1.0;
     }
     
     /**
@@ -271,7 +274,7 @@ public final class SheetWriter {
             0x00, 0x09, 0x00, 0x00, 0x08, 0x00, 0x0E, 0x01,
             0x00, 0x00, 0x00, 0x00
         };
-        w.writeRecordHeader(485, fmtInfoData.length);
+        w.writeRecordHeader(Biff12RecordType.BrtWsFmtInfo, fmtInfoData.length);
         w.writeBytes(fmtInfoData);
     }
     
@@ -290,12 +293,12 @@ public final class SheetWriter {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x01, 0x00, 0x00, 0x00
         };
-        w.writeRecordHeader(535, drawingData.length);
+        w.writeRecordHeader(Biff12RecordType.BrtDrawing, drawingData.length);
         w.writeBytes(drawingData);
         
         // BrtPageSetupView (2 bytes data)
         byte[] psViewData = {0x10, 0x00};
-        w.writeRecordHeader(477, psViewData.length);
+        w.writeRecordHeader(Biff12RecordType.BrtPageSetupView, psViewData.length);
         w.writeBytes(psViewData);
         
         // BrtPageSetup (48 bytes data)
@@ -307,7 +310,7 @@ public final class SheetWriter {
             0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xE0, 0x3F, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, (byte)0xE0, 0x3F
         };
-        w.writeRecordHeader(476, psData.length);
+        w.writeRecordHeader(Biff12RecordType.BrtPageSetup, psData.length);
         w.writeBytes(psData);
     }
 }
