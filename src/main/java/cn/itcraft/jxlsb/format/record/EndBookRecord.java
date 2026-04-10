@@ -1,0 +1,27 @@
+package cn.itcraft.jxlsb.format.record;
+
+import cn.itcraft.jxlsb.format.BiffRecord;
+import cn.itcraft.jxlsb.format.RecordWriter;
+import cn.itcraft.jxlsb.memory.MemoryBlock;
+
+/**
+ * EndBook记录
+ * 
+ * <p>BIFF12记录类型0x0084，标记Workbook结束。
+ * 
+ * @author AI架构师
+ * @since 1.0.0
+ */
+public final class EndBookRecord extends BiffRecord {
+    
+    public static final int RECORD_TYPE = 0x0084;
+    
+    public EndBookRecord() {
+        super(RECORD_TYPE, 0, null);
+    }
+    
+    @Override
+    public void writeTo(RecordWriter writer) {
+        writer.writeRecordHeader(RECORD_TYPE, 0);
+    }
+}

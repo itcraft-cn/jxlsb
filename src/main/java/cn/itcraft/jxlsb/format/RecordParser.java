@@ -4,6 +4,11 @@ import cn.itcraft.jxlsb.memory.MemoryBlock;
 import cn.itcraft.jxlsb.memory.OffHeapAllocator;
 import cn.itcraft.jxlsb.memory.AllocatorFactory;
 import cn.itcraft.jxlsb.format.record.UnknownRecord;
+import cn.itcraft.jxlsb.format.record.CellRecord;
+import cn.itcraft.jxlsb.format.record.BeginSheetRecord;
+import cn.itcraft.jxlsb.format.record.BeginRowRecord;
+import cn.itcraft.jxlsb.format.record.StringRecord;
+import cn.itcraft.jxlsb.format.record.VersionRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Objects;
@@ -61,6 +66,19 @@ public final class RecordParser {
     }
     
     private BiffRecord createRecord(int type, int size, MemoryBlock data) {
-        return new UnknownRecord(type, size, data);
+        switch (type) {
+            case CellRecord.RECORD_TYPE:
+                return new CellRecord(size, data);
+            case BeginSheetRecord.RECORD_TYPE:
+                return new BeginSheetRecord(size, data);
+            case BeginRowRecord.RECORD_TYPE:
+                return new BeginRowRecord(size, data);
+            case StringRecord.RECORD_TYPE:
+                return new StringRecord(size, data);
+            case VersionRecord.RECORD_TYPE:
+                return new VersionRecord(size, data);
+            default:
+                return new UnknownRecord(type, size, data);
+        }
     }
 }
