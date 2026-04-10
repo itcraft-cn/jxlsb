@@ -27,30 +27,60 @@ public final class WorkbookWriter {
     public byte[] toBiff12Bytes() throws IOException {
         Biff12Writer w = new Biff12Writer();
         
-        // BrtBeginBook (empty record)
         w.writeEmptyRecord(Biff12RecordType.BrtBeginBook);
         
-        // BrtFileVersion - 可选，省略以简化
+        writeBrtFileVersion(w);
         
-        // BrtWbProp - 可选，省略以简化
+        writeBrtWbProp(w);
         
-        // BrtBeginBookViews - 可选，省略以简化
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginBookViews);
         
-        // BrtBeginBundleShs (开始Sheet集合)
+        writeBrtBookView(w);
+        
+        w.writeEmptyRecord(Biff12RecordType.BrtEndBookViews);
+        
         w.writeEmptyRecord(Biff12RecordType.BrtBeginBundleShs);
         
-        // BrtBundleSh records (每个Sheet一个)
         for (SheetInfo sheet : sheets) {
             writeBrtBundleSh(w, sheet);
         }
         
-        // BrtEndBundleShs
         w.writeEmptyRecord(Biff12RecordType.BrtEndBundleShs);
         
-        // BrtEndBook
         w.writeEmptyRecord(Biff12RecordType.BrtEndBook);
         
         return w.toByteArray();
+    }
+    
+    private void writeBrtFileVersion(Biff12Writer w) throws IOException {
+        byte[] data = {
+            0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+            'x', 0, 'l', 0
+        };
+        w.writeRecordHeader(128, data.length);
+        w.writeBytes(data);
+    }
+    
+    private void writeBrtWbProp(Biff12Writer w) throws IOException {
+        byte[] data = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+            0x00, 0x33, 0x00, 0x01, 0x00, 0x00, 0x00, 0x35,
+            0x00, 0x04, 0x00, 0x00, 0x00, 0x39, 0x00, 0x33,
+            0x00, 0x30, 0x00, 0x32, 0x00
+        };
+        w.writeRecordHeader(153, data.length);
+        w.writeBytes(data);
+    }
+    
+    private void writeBrtBookView(Biff12Writer w) throws IOException {
+        byte[] data = {
+            0x20, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00
+        };
+        w.writeRecordHeader(156, data.length);
+        w.writeBytes(data);
     }
     
     /**
