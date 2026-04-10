@@ -49,6 +49,7 @@ public final class Biff12RecordType {
     public static final int BrtSel = 152;
     public static final int BrtWbProp = 153;
     public static final int BrtBundleSh = 156;
+    public static final int BrtBookView = 158;
     public static final int BrtBeginSst = 159;
     public static final int BrtEndSst = 160;
     

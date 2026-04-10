@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Workbook.bin写入器
- * 严格按照MS-XLSB规范实现
+ * 使用参考文件的准确数据
  */
 public final class WorkbookWriter {
     
@@ -20,10 +20,6 @@ public final class WorkbookWriter {
         return sheets.size();
     }
     
-    /**
-     * 生成workbook.bin内容
-     * 记录序列：BrtBeginBook -> BrtFileVersion -> BrtWbProp -> BrtBeginBookViews -> ... -> BrtEndBook
-     */
     public byte[] toBiff12Bytes() throws IOException {
         Biff12Writer w = new Biff12Writer();
         
@@ -54,9 +50,12 @@ public final class WorkbookWriter {
     
     private void writeBrtFileVersion(Biff12Writer w) throws IOException {
         byte[] data = {
-            0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-            'x', 0, 'l', 0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,
+            0x00, 0x00, 0x78, 0x00, 0x6c, 0x00, 0x01, 0x00,
+            0x00, 0x00, 0x33, 0x00, 0x01, 0x00, 0x00, 0x00,
+            0x35, 0x00, 0x04, 0x00, 0x00, 0x00, 0x39, 0x00,
+            0x33, 0x00, 0x30, 0x00, 0x32, 0x00, 0x00
         };
         w.writeRecordHeader(128, data.length);
         w.writeBytes(data);
@@ -64,11 +63,8 @@ public final class WorkbookWriter {
     
     private void writeBrtWbProp(Biff12Writer w) throws IOException {
         byte[] data = {
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
-            0x00, 0x33, 0x00, 0x01, 0x00, 0x00, 0x00, 0x35,
-            0x00, 0x04, 0x00, 0x00, 0x00, 0x39, 0x00, 0x33,
-            0x00, 0x30, 0x00, 0x32, 0x00
+            0x20, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00
         };
         w.writeRecordHeader(153, data.length);
         w.writeBytes(data);
@@ -76,40 +72,30 @@ public final class WorkbookWriter {
     
     private void writeBrtBookView(Biff12Writer w) throws IOException {
         byte[] data = {
-            0x20, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            (byte)0x80, 0x70, 0x00, 0x00, (byte)0xcf, 0x30, 0x00, 0x00,
+            0x58, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x78
         };
-        w.writeRecordHeader(156, data.length);
+        w.writeRecordHeader(158, data.length);
         w.writeBytes(data);
     }
     
-    /**
-     * 写入BrtBundleSh记录
-     * 结构：hsState(1) + iTabID(4) + strRelID(变量) + strName(变量)
-     */
     private void writeBrtBundleSh(Biff12Writer w, SheetInfo sheet) throws IOException {
-        // 先计算大小
-        int nameLen = sheet.name.length();
-        int strLen = 4 + nameLen * 2;  // 字符数(4) + UTF-16LE字符
-        
-        // strRelID 固定为 "rId{N}"
         String relId = "rId" + sheet.sheetId;
-        int relIdLen = 4 + relId.length() * 2;
+        int relIdLen = relId.length();
+        int nameLen = sheet.name.length();
         
-        int recordSize = 1 + 4 + relIdLen + strLen;  // hsState + iTabID + strRelID + strName
+        int recordSize = 1 + 4 + (4 + relIdLen * 2) + (4 + nameLen * 2);
         
         w.writeRecordHeader(Biff12RecordType.BrtBundleSh, recordSize);
         
-        // hsState (1 byte) - 0 = visible
         w.writeBytes(new byte[]{0});
         
-        // iTabID (4 bytes)
         w.writeIntLE(sheet.sheetId);
         
-        // strRelID (XLWideString)
         w.writeXLWideString(relId);
         
-        // strName (XLWideString)
         w.writeXLWideString(sheet.name);
     }
     
