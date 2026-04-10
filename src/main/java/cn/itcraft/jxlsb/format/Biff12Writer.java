@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 public final class Biff12Writer {
     
     private final ByteArrayOutputStream baos;
+    // 实例级别buffer，避免循环内重复创建
+    private final byte[] intBuffer = new byte[4];
     
     public Biff12Writer() {
         this(64 * 1024);
@@ -67,16 +69,15 @@ public final class Biff12Writer {
     }
     
     /**
-     * 写入小端序int（批量写入优化）
+     * 写入小端序int（使用实例buffer优化）
      */
     public void writeIntLE(int value) throws IOException {
-        // 批量写入4字节，减少方法调用次数
-        byte[] buffer = new byte[4];
-        buffer[0] = (byte)(value & 0xFF);
-        buffer[1] = (byte)((value >> 8) & 0xFF);
-        buffer[2] = (byte)((value >> 16) & 0xFF);
-        buffer[3] = (byte)((value >> 24) & 0xFF);
-        baos.write(buffer);
+        // 使用实例级别buffer，避免循环内创建2M+次数组
+        intBuffer[0] = (byte)(value & 0xFF);
+        intBuffer[1] = (byte)((value >> 8) & 0xFF);
+        intBuffer[2] = (byte)((value >> 16) & 0xFF);
+        intBuffer[3] = (byte)((value >> 24) & 0xFF);
+        baos.write(intBuffer);
     }
     
     /**
