@@ -66,17 +66,35 @@ public final class SheetWriter {
     
     /**
      * 写入BrtRowHdr记录
-     * 简化结构：rw(4) + ixfe(4) + miyRw(2) + flags(4) + ccolspan(4)
+     * 正确结构：rw(4) + ixfe(4) + miyRw(2) + flags(3) + ccolspan(4) + rgBrtColspan(变量)
      */
     private void writeBrtRowHdr(Biff12Writer w, int row, int colCount) throws IOException {
-        int recordSize = 4 + 4 + 2 + 4 + 4;  // 18 bytes minimum
+        // 计算需要多少个 BrtColSpan
+        int numSpans = 0;
+        if (colCount > 0) {
+            int lastSegment = (colCount - 1) / 1024;
+            numSpans = lastSegment + 1;
+        }
+        
+        // 记录大小: rw(4) + ixfe(4) + miyRw(2) + flags(3) + ccolspan(4) + BrtColSpan * numSpans
+        int recordSize = 4 + 4 + 2 + 3 + 4 + (numSpans * 8);
         
         w.writeRecordHeader(Biff12RecordType.BrtRowHdr, recordSize);
         w.writeIntLE(row);      // rw
         w.writeIntLE(0);        // ixfe (style index, 0=default)
-        w.writeBytes(new byte[]{0, 0});  // miyRw (row height, 0=default)
-        w.writeIntLE(0);        // flags
-        w.writeIntLE(0);        // ccolspan (column span count)
+        w.writeBytes(new byte[]{0x0E, 0x01});  // miyRw = 270 (default row height in twips)
+        w.writeBytes(new byte[]{0x00, 0x00, 0x00});  // flags (3 bytes)
+        
+        // ccolspan
+        w.writeIntLE(numSpans);
+        
+        // rgBrtColspan - 每个 BrtColSpan 指定一个段中列的范围
+        for (int seg = 0; seg < numSpans; seg++) {
+            int segStartCol = seg * 1024;
+            int segEndCol = Math.min((seg + 1) * 1024 - 1, colCount - 1);
+            w.writeIntLE(segStartCol);  // colMic
+            w.writeIntLE(segEndCol);    // colLast
+        }
     }
     
     /**

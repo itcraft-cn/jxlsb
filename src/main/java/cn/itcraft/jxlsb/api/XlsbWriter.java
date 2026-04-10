@@ -6,6 +6,7 @@ import cn.itcraft.jxlsb.container.RelsGenerator;
 import cn.itcraft.jxlsb.format.SharedStringsTable;
 import cn.itcraft.jxlsb.format.WorkbookWriter;
 import cn.itcraft.jxlsb.format.SheetWriter;
+import cn.itcraft.jxlsb.format.StylesWriter;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.util.Objects;
@@ -62,6 +63,7 @@ public final class XlsbWriter implements AutoCloseable {
         // [Content_Types].xml
         ContentTypes ct = new ContentTypes();
         ct.addOverride("/xl/workbook.bin", "application/vnd.ms-excel.sheet.binary.macroEnabled.main");
+        ct.addOverride("/xl/styles.bin", "application/vnd.ms-excel.styles");
         for (int i = 1; i <= sheetCount; i++) {
             ct.addOverride("/xl/worksheets/sheet" + i + ".bin", 
                           "application/vnd.ms-excel.worksheet");
@@ -76,6 +78,10 @@ public final class XlsbWriter implements AutoCloseable {
         
         // xl/workbook.bin
         container.addEntry("xl/workbook.bin", workbookWriter.toBiff12Bytes());
+        
+        // xl/styles.bin (required)
+        StylesWriter stylesWriter = new StylesWriter();
+        container.addEntry("xl/styles.bin", stylesWriter.toBiff12Bytes());
         
         // xl/_rels/workbook.bin.rels
         container.addEntry("xl/_rels/workbook.bin.rels", RelsGenerator.generateWorkbookRels(sheetCount));
