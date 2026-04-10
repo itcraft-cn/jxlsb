@@ -35,6 +35,15 @@ public final class OffHeapOutputStream implements AutoCloseable {
         position += size;
     }
     
+    public void writeBlock(MemoryBlock block, long size) throws IOException {
+        byte[] data = new byte[(int) size];
+        block.getBytes(0, data, 0, (int) size);
+        
+        ByteBuffer buffer = ByteBuffer.wrap(data);
+        fileChannel.write(buffer, position);
+        position += size;
+    }
+    
     public void writeBlocks(MemoryBlock[] blocks) throws IOException {
         for (MemoryBlock block : blocks) {
             writeBlock(block);

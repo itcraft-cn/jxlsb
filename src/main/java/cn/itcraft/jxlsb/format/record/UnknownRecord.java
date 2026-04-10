@@ -1,4 +1,5 @@
 package cn.itcraft.jxlsb.format.record;
+import java.io.IOException;
 
 import cn.itcraft.jxlsb.format.BiffRecord;
 import cn.itcraft.jxlsb.format.RecordWriter;
@@ -17,7 +18,7 @@ public final class UnknownRecord extends BiffRecord {
     }
     
     @Override
-    public void writeTo(RecordWriter writer) {
+    public void writeTo(RecordWriter writer) throws IOException {
         writer.writeRecordHeader(recordType, recordSize);
         if (dataBlock != null && recordSize > 0) {
             byte[] data = new byte[recordSize];

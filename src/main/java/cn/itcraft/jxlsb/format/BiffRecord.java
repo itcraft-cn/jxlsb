@@ -1,6 +1,7 @@
 package cn.itcraft.jxlsb.format;
 
 import cn.itcraft.jxlsb.memory.MemoryBlock;
+import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -33,7 +34,7 @@ public abstract class BiffRecord implements AutoCloseable {
         return dataBlock;
     }
     
-    public abstract void writeTo(RecordWriter writer);
+    public abstract void writeTo(RecordWriter writer) throws IOException;
     
     @Override
     public void close() {

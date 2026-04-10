@@ -28,7 +28,7 @@ public final class XlsbFormatWriter {
         this.writer = writer;
     }
     
-    public void writeWorkbookStart() {
+    public void writeWorkbookStart() throws IOException {
         BeginBookRecord beginBook = new BeginBookRecord();
         beginBook.writeTo(writer);
         
@@ -38,36 +38,36 @@ public final class XlsbFormatWriter {
         version.close();
     }
     
-    public void writeWorkbookEnd() {
+    public void writeWorkbookEnd() throws IOException {
         EndBookRecord endBook = new EndBookRecord();
         endBook.writeTo(writer);
     }
     
-    public void writeSheetStart(int sheetIndex) {
+    public void writeSheetStart(int sheetIndex) throws IOException {
         MemoryBlock sheetBlock = allocator.allocate(64);
         BeginSheetRecord beginSheet = BeginSheetRecord.create(sheetIndex, sheetBlock);
         beginSheet.writeTo(writer);
         beginSheet.close();
     }
     
-    public void writeSheetEnd() {
+    public void writeSheetEnd() throws IOException {
         EndSheetRecord endSheet = new EndSheetRecord();
         endSheet.writeTo(writer);
     }
     
-    public void writeRowStart(int rowIndex, int columnCount) {
+    public void writeRowStart(int rowIndex, int columnCount) throws IOException {
         MemoryBlock rowBlock = allocator.allocate(64);
         BeginRowRecord beginRow = BeginRowRecord.create(rowIndex, columnCount, rowBlock);
         beginRow.writeTo(writer);
         beginRow.close();
     }
     
-    public void writeRowEnd() {
+    public void writeRowEnd() throws IOException {
         EndRowRecord endRow = new EndRowRecord();
         endRow.writeTo(writer);
     }
     
-    public void writeCell(OffHeapCell cell) {
+    public void writeCell(OffHeapCell cell) throws IOException {
         MemoryBlock cellBlock = allocator.allocate(2048);
         
         CellType cellType = cell.getType();
@@ -101,6 +101,31 @@ public final class XlsbFormatWriter {
         
         cellRecord.writeTo(writer);
         cellRecord.close();
+    }
+    
+    public void writeCellDirect(int rowIndex, int colIndex, CellType cellType, Object value) throws IOException {
+        int estimatedSize = estimateCellSize(cellType, value);
+        MemoryBlock cellBlock = allocator.allocate(estimatedSize);
+        
+        CellRecord cellRecord = CellRecord.create(rowIndex, colIndex, cellType, value, cellBlock);
+        cellRecord.writeTo(writer);
+        cellRecord.close();
+    }
+    
+    private int estimateCellSize(CellType cellType, Object value) {
+        switch (cellType) {
+            case NUMBER:
+                return 64;
+            case DATE:
+                return 64;
+            case BOOLEAN:
+                return 64;
+            case TEXT:
+                String text = (String) value;
+                return 64 + (text != null ? Math.min(text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length, 1000) + 4 : 0);
+            default:
+                return 64;
+        }
     }
     
     public void writeSheet(OffHeapSheet sheet) throws IOException {

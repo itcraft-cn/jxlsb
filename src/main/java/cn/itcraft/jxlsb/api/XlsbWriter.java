@@ -1,8 +1,7 @@
 package cn.itcraft.jxlsb.api;
 
 import cn.itcraft.jxlsb.data.OffHeapSheet;
-import cn.itcraft.jxlsb.data.OffHeapRow;
-import cn.itcraft.jxlsb.data.OffHeapCell;
+import cn.itcraft.jxlsb.data.CellType;
 import cn.itcraft.jxlsb.io.OffHeapOutputStream;
 import cn.itcraft.jxlsb.format.RecordWriter;
 import cn.itcraft.jxlsb.format.XlsbFormatWriter;
@@ -26,7 +25,7 @@ public final class XlsbWriter implements AutoCloseable {
     private XlsbWriter(Builder builder) throws IOException {
         Objects.requireNonNull(builder.path, "Path must not be null");
         this.outputStream = new OffHeapOutputStream(builder.path);
-        this.recordWriter = new RecordWriter(16 * 1024 * 1024);
+        this.recordWriter = new RecordWriter(16 * 1024 * 1024, outputStream);
         this.formatWriter = new XlsbFormatWriter(recordWriter);
     }
     
@@ -43,42 +42,23 @@ public final class XlsbWriter implements AutoCloseable {
     }
     
     public void writeBatch(String sheetName, CellDataSupplier supplier,
-                          int rowCount, int columnCount) throws IOException {
-        OffHeapSheet sheet = createSheet(sheetName, rowCount, columnCount);
+                           int rowCount, int columnCount) throws IOException {
+        formatWriter.writeSheetStart(sheetCount++);
         
         for (int row = 0; row < rowCount; row++) {
-            OffHeapRow currentRow = sheet.createRow(row);
+            formatWriter.writeRowStart(row, columnCount);
+            
             for (int col = 0; col < columnCount; col++) {
                 CellData data = supplier.get(row, col);
-                OffHeapCell cell = currentRow.getCell(col);
-                setCellData(cell, data);
+                if (data != null && data.getType() != null) {
+                    formatWriter.writeCellDirect(row, col, data.getType(), data.getValue());
+                }
             }
+            
+            formatWriter.writeRowEnd();
         }
         
-        sheet.close();
-    }
-    
-    private void setCellData(OffHeapCell cell, CellData data) {
-        if (data == null || data.getType() == null) {
-            return;
-        }
-        
-        switch (data.getType()) {
-            case TEXT:
-                cell.setText((String) data.getValue());
-                break;
-            case NUMBER:
-                cell.setNumber((Double) data.getValue());
-                break;
-            case DATE:
-                cell.setDate((Long) data.getValue());
-                break;
-            case BOOLEAN:
-                cell.setBoolean((Boolean) data.getValue());
-                break;
-            default:
-                break;
-        }
+        formatWriter.writeSheetEnd();
     }
     
     int getSheetCount() {
@@ -91,9 +71,15 @@ public final class XlsbWriter implements AutoCloseable {
     
     @Override
     public void close() throws IOException {
-        formatWriter.close();
-        recordWriter.close();
-        outputStream.close();
+        try {
+            formatWriter.close();
+        } finally {
+            try {
+                recordWriter.close();
+            } finally {
+                outputStream.close();
+            }
+        }
     }
     
     public static final class Builder {
