@@ -5,6 +5,7 @@ import cn.itcraft.jxlsb.data.OffHeapRow;
 import cn.itcraft.jxlsb.data.OffHeapCell;
 import cn.itcraft.jxlsb.io.OffHeapOutputStream;
 import cn.itcraft.jxlsb.format.RecordWriter;
+import cn.itcraft.jxlsb.format.XlsbFormatWriter;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.util.Objects;
@@ -18,11 +19,15 @@ import java.util.Objects;
 public final class XlsbWriter implements AutoCloseable {
     
     private final OffHeapOutputStream outputStream;
+    private final RecordWriter recordWriter;
+    private final XlsbFormatWriter formatWriter;
     private int sheetCount = 0;
     
     private XlsbWriter(Builder builder) throws IOException {
         Objects.requireNonNull(builder.path, "Path must not be null");
         this.outputStream = new OffHeapOutputStream(builder.path);
+        this.recordWriter = new RecordWriter(16 * 1024 * 1024);
+        this.formatWriter = new XlsbFormatWriter(recordWriter);
     }
     
     public OffHeapSheet createSheet(String sheetName, int rowCount, int columnCount) {
@@ -30,6 +35,11 @@ public final class XlsbWriter implements AutoCloseable {
     }
     
     public void writeSheet(OffHeapSheet sheet) throws IOException {
+        try {
+            formatWriter.writeSheet(sheet);
+        } catch (Exception e) {
+            throw new IOException("Failed to write sheet", e);
+        }
     }
     
     public void writeBatch(String sheetName, CellDataSupplier supplier,
@@ -81,6 +91,8 @@ public final class XlsbWriter implements AutoCloseable {
     
     @Override
     public void close() throws IOException {
+        formatWriter.close();
+        recordWriter.close();
         outputStream.close();
     }
     
