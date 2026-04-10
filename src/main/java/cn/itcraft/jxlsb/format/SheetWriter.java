@@ -16,6 +16,12 @@ public final class SheetWriter {
     private static final long EXCEL_EPOCH_MILLIS = -2208988800000L;
     private static final String DEFAULT_DATE_FORMAT = "m/d/yy h:mm";
     
+    // Pre-allocated byte arrays to avoid repeated allocation in loops
+    private static final byte[] ROW_HEIGHT_BYTES = {0x0E, 0x01};
+    private static final byte[] ROW_FLAGS_BYTES = {0x00, 0x00, 0x00};
+    private static final byte[] BOOL_TRUE = {1};
+    private static final byte[] BOOL_FALSE = {0};
+    
     private final SharedStringsTable sst;
     private final StylesWriter stylesWriter;
     private int defaultDateStyleId;
@@ -42,7 +48,9 @@ public final class SheetWriter {
      */
     public byte[] writeSheet(CellDataSupplier supplier, int rowCount, int columnCount) 
             throws IOException {
-        Biff12Writer w = new Biff12Writer();
+        // Estimate size: each cell ~30 bytes + overhead
+        int estimatedSize = rowCount * columnCount * 30 + 1024;
+        Biff12Writer w = new Biff12Writer(estimatedSize);
         
         // BrtBeginSheet
         w.writeEmptyRecord(Biff12RecordType.BrtBeginSheet);
@@ -111,8 +119,8 @@ public final class SheetWriter {
         w.writeRecordHeader(Biff12RecordType.BrtRowHdr, recordSize);
         w.writeIntLE(row);      // rw
         w.writeIntLE(0);        // ixfe (style index, 0=default)
-        w.writeBytes(new byte[]{0x0E, 0x01});  // miyRw = 270 (default row height in twips)
-        w.writeBytes(new byte[]{0x00, 0x00, 0x00});  // flags (3 bytes)
+        w.writeBytes(ROW_HEIGHT_BYTES);  // miyRw = 270 (default row height in twips)
+        w.writeBytes(ROW_FLAGS_BYTES);  // flags (3 bytes)
         
         // ccolspan
         w.writeIntLE(numSpans);
@@ -222,7 +230,7 @@ public final class SheetWriter {
         
         w.writeRecordHeader(Biff12RecordType.BrtCellBool, recordSize);
         w.writeCell(col, 0);     // cell结构
-        w.writeBytes(new byte[]{(byte)(value ? 1 : 0)});
+        w.writeBytes(value ? BOOL_TRUE : BOOL_FALSE);
     }
     
     /**

@@ -6,31 +6,30 @@ import cn.itcraft.jxlsb.memory.MemoryBlock;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 共享字符串表（SST）
- * 严格按照MS-XLSB规范实现
- */
 public final class SharedStringsTable {
     
-    private final List<String> strings = new ArrayList<>();
-    private final Map<String, Integer> indexMap = new HashMap<>();
-    private int totalCount = 0;
+    private static final byte[] SST_FLAGS_ZERO = {0};
     
-    public synchronized int addString(String str) {
-        totalCount++;
-        Integer idx = indexMap.get(str);
-        if (idx != null) {
-            return idx;
-        }
-        int newIndex = strings.size();
-        strings.add(str);
-        indexMap.put(str, newIndex);
-        return newIndex;
+    private final List<String> strings = new ArrayList<>();
+    private final ConcurrentHashMap<String, Integer> indexMap = new ConcurrentHashMap<>(1024);
+    private final AtomicInteger totalCount = new AtomicInteger(0);
+    
+    public int addString(String str) {
+        totalCount.incrementAndGet();
+        
+        return indexMap.computeIfAbsent(str, k -> {
+            int newIndex;
+            synchronized (strings) {
+                newIndex = strings.size();
+                strings.add(k);
+            }
+            return newIndex;
+        });
     }
     
     public int getCount() {
@@ -38,7 +37,7 @@ public final class SharedStringsTable {
     }
     
     public int getTotalCount() {
-        return totalCount;
+        return totalCount.get();
     }
     
     public String getString(int index) {
@@ -132,7 +131,7 @@ public final class SharedStringsTable {
         // BrtBeginSst
         // 结构：cTotals(4) + cUnique(4)
         w.writeRecordHeader(Biff12RecordType.BrtBeginSst, 8);
-        w.writeIntLE(totalCount);
+        w.writeIntLE(totalCount.get());
         w.writeIntLE(strings.size());
         
         // BrtSSTItem records
@@ -157,7 +156,7 @@ public final class SharedStringsTable {
         w.writeRecordHeader(Biff12RecordType.BrtSSTItem, recordSize);
         
         // RichStr flags (1 byte): fRichStr=0, fExtStr=0
-        w.writeBytes(new byte[]{0});
+        w.writeBytes(SST_FLAGS_ZERO);
         
         // XLWideString
         w.writeXLWideString(str);

@@ -13,7 +13,11 @@ public final class Biff12Writer {
     private final ByteArrayOutputStream baos;
     
     public Biff12Writer() {
-        this.baos = new ByteArrayOutputStream(64 * 1024);
+        this(64 * 1024);
+    }
+    
+    public Biff12Writer(int estimatedSize) {
+        this.baos = new ByteArrayOutputStream(estimatedSize);
     }
     
     /**
