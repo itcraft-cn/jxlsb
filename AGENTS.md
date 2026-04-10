@@ -1,16 +1,29 @@
-# {project.title placeholder}
+# jxlsb - Java XLSB Library
 
-## {project.desc placeholder}
+## 项目描述
 
-## {project.other1 placeholder}
+纯Java实现的XLSB（Excel Binary Workbook）格式读写库，具有以下特性：
 
-## {project.other2 placeholder}
+- **零依赖**：仅依赖SLF4J，无需POI等重型库
+- **堆外内存**：全量堆外内存架构，追求零GC压力
+- **流式API**：支持大规模数据流式写入
+- **企业级质量**：支持Java 8+，完善的测试覆盖
 
-## {project.other3 placeholder}
+## 核心功能
 
-## ...
+- ✅ XLSB文件写入（数字、文本、布尔、日期、空白）
+- ✅ Excel/WPS兼容性验证通过
+- ✅ 性能优异：比POI快2-3倍，文件小30-50%
+- 🚧 XLSB文件读取（开发中）
+- 🚧 样式和格式支持（开发中）
 
-## {project.otherN placeholder}
+## 性能数据
+
+**100K行 × 10列测试结果：**
+- jxlsb: 2.61 MB, 590 ms
+- FastExcel: 5.42 MB, 591 ms
+- EasyExcel: 4.18 MB, 1173 ms
+- POI: 4.16 MB, 1826 ms
 
 ## AI guide
 
@@ -52,3 +65,32 @@ Read /disk2/helly_data/code/markdown/self-ai-spec/lang-spec/spec.java.md
 授权读取：/disk2/helly_data/code/markdown/self-ai-spec/lang-spec/ci.java.md
 
 Read /disk2/helly_data/code/markdown/self-ai-spec/lang-spec/ci.java.md
+
+### 项目特定规范
+
+#### 包结构
+
+```
+cn.itcraft.jxlsb
+├── api/          - 公共API
+├── container/    - ZIP容器管理
+├── data/         - 数据结构
+├── format/       - BIFF12格式
+└── util/         - 工具类
+```
+
+#### 测试要求
+
+- 单元测试覆盖率 > 80%
+- 性能测试使用 JMH
+- 所有测试必须通过才能提交
+
+#### 提交规范
+
+遵循约定式提交：
+- `feat`: 新功能
+- `fix`: 修复bug
+- `perf`: 性能优化
+- `docs`: 文档更新
+- `test`: 测试相关
+- `refactor`: 重构
