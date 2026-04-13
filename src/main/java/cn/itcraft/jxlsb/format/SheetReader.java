@@ -47,24 +47,22 @@ public final class SheetReader implements AutoCloseable {
             currentHandler.onRowEnd(currentRow);
         }
         
+        if (offset + 4 > buffer.length) return;
         currentRow = readIntLE(buffer, offset);
         currentHandler = handler;
         
-        // BrtRowHdr结构: rw(4) + ixfe(4) + miyRw(2) + flags(3) + ccolspan(4) + rgBrtColspan(8*n)
-        // offset + 4 = ixfe (style index)
-        // offset + 8 = miyRw (row height)
-        // offset + 10 = flags
-        // offset + 13 = ccolspan (number of col spans)
-        int numSpans = readIntLE(buffer, offset + 13);
-        
-        int lastCol = 0;
-        for (int seg = 0; seg < numSpans; seg++) {
-            int segStartCol = readIntLE(buffer, offset + 17 + seg * 8);
-            int segEndCol = readIntLE(buffer, offset + 21 + seg * 8);
-            lastCol = Math.max(lastCol, segEndCol);
+        int numSpans = 0;
+        if (offset + 17 <= buffer.length) {
+            numSpans = readIntLE(buffer, offset + 13);
         }
         
-        int columnCount = lastCol + 1;
+        int lastCol = 0;
+        if (numSpans > 0 && offset + 17 + numSpans * 8 <= buffer.length) {
+            int lastSpanOffset = offset + 17 + (numSpans - 1) * 8;
+            lastCol = readIntLE(buffer, lastSpanOffset + 4);
+        }
+        
+        int columnCount = Math.max(1, lastCol + 1);
         handler.onRowStart(currentRow, columnCount);
     }
     
@@ -105,10 +103,13 @@ public final class SheetReader implements AutoCloseable {
     }
     
     private void handleBrtCellIsst(byte[] buffer, int offset, int size, RowHandler handler) {
-        int col = readIntLE(buffer, offset);
+        if (offset + 12 > buffer.length) return;
         
-        String value = readXLWideString(buffer, offset + 8);
-        handler.onCellText(currentRow, col, value);
+        int col = readIntLE(buffer, offset);
+        int sstIndex = readIntLE(buffer, offset + 8);
+        
+        String value = sst.getString(sstIndex);
+        handler.onCellText(currentRow, col, value != null ? value : "");
     }
     
     public void readRows(RowHandler handler) throws IOException {
@@ -207,7 +208,7 @@ public final class SheetReader implements AutoCloseable {
                 
                 pos += recordSize;
             } catch (BatchCompleteException e) {
-                throw e; // 重新抛出，停止读取
+                throw e;
             } catch (Exception e) {
                 pos += recordSize;
             }

@@ -1,8 +1,5 @@
 package cn.itcraft.jxlsb.format;
 
-import cn.itcraft.jxlsb.memory.OffHeapAllocator;
-import cn.itcraft.jxlsb.memory.AllocatorFactory;
-import cn.itcraft.jxlsb.memory.MemoryBlock;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -55,8 +52,6 @@ public final class SharedStringsTable {
      * @throws IOException IO异常
      */
     public void load(InputStream inputStream) throws IOException {
-        OffHeapAllocator allocator = AllocatorFactory.createDefaultAllocator();
-        
         try {
             byte[] buffer = new byte[8192];
             int bytesRead;
@@ -66,36 +61,41 @@ public final class SharedStringsTable {
                 offset += bytesRead;
                 
                 if (offset >= buffer.length) {
-                    processBuffer(buffer, offset, allocator);
+                    processBuffer(buffer, offset);
                     offset = 0;
                 }
             }
             
             if (offset > 0) {
-                processBuffer(buffer, offset, allocator);
+                processBuffer(buffer, offset);
             }
         } finally {
             inputStream.close();
         }
     }
     
-    private void processBuffer(byte[] buffer, int length, OffHeapAllocator allocator) throws IOException {
+    private void processBuffer(byte[] buffer, int length) throws IOException {
         int pos = 0;
         
-        while (pos + 8 <= length) {
-            int recordType = readIntLE(buffer, pos);
-            int recordSize = readIntLE(buffer, pos + 4);
-            pos += 8;
+        while (pos + 2 <= length) {
+            int recordType = VarIntReader.readVarInt(buffer, pos);
+            int typeSize = VarIntReader.varIntSize(recordType);
+            pos += typeSize;
             
-            if (recordType == Biff12RecordType.BrtSSTItem && pos + recordSize <= length) {
+            if (pos >= length) break;
+            
+            int recordSize = VarIntReader.readVarSize(buffer, pos);
+            int sizeBytes = VarIntReader.varSizeSize(recordSize);
+            pos += sizeBytes;
+            
+            if (recordSize < 0 || pos + recordSize > length) break;
+            
+            if (recordType == Biff12RecordType.BrtSSTItem) {
                 String text = parseSSTItem(buffer, pos, recordSize);
                 strings.add(text);
-                pos += recordSize;
-            } else if (recordType == Biff12RecordType.BrtBeginSst || recordType == Biff12RecordType.BrtEndSst) {
-                pos += recordSize;
-            } else {
-                pos += recordSize;
             }
+            
+            pos += recordSize;
         }
     }
     
