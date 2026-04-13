@@ -7,7 +7,15 @@ import java.io.IOException;
 
 /**
  * Worksheet.bin写入器
- * 严格按照MS-XLSB规范实现
+ * 
+ * <p>支持两种写入模式：
+ * <ul>
+ *   <li>writeSheet：一次性写入全部数据</li>
+ *   <li>流式追加：startStreaming + appendRows + finalizeStreaming</li>
+ * </ul>
+ * 
+ * @author AI架构师
+ * @since 1.0.0
  */
 public final class SheetWriter {
     
@@ -16,7 +24,6 @@ public final class SheetWriter {
     private static final long EXCEL_EPOCH_MILLIS = -2208988800000L;
     private static final String DEFAULT_DATE_FORMAT = "m/d/yy h:mm";
     
-    // Pre-allocated byte arrays to avoid repeated allocation in loops
     private static final byte[] ROW_HEIGHT_BYTES = {0x0E, 0x01};
     private static final byte[] ROW_FLAGS_BYTES = {0x00, 0x00, 0x00};
     private static final byte[] BOOL_TRUE = {1};
@@ -25,6 +32,9 @@ public final class SheetWriter {
     private final SharedStringsTable sst;
     private final StylesWriter stylesWriter;
     private int defaultDateStyleId;
+    
+    private Biff12Writer streamingWriter;
+    private int streamingColumnCount;
     
     public SheetWriter(SharedStringsTable sst) {
         this.sst = sst;
@@ -42,45 +52,18 @@ public final class SheetWriter {
         }
     }
     
-    /**
-     * 生成worksheet.bin内容
-     * 记录序列：BrtBeginSheet -> BrtWsProp -> BrtWsDim -> BrtBeginWsViews -> ... -> BrtBeginSheetData -> ... -> BrtEndSheet
-     */
     public byte[] writeSheet(CellDataSupplier supplier, int rowCount, int columnCount) 
             throws IOException {
-        // Estimate size: each cell ~30 bytes + overhead
         int estimatedSize = rowCount * columnCount * 30 + 1024;
         Biff12Writer w = new Biff12Writer(estimatedSize);
         
-        // BrtBeginSheet
-        w.writeEmptyRecord(Biff12RecordType.BrtBeginSheet);
+        writeSheetHeader(w, rowCount, columnCount);
         
-        // BrtWsProp - Sheet属性（必需）
-        writeBrtWsProp(w);
-        
-        // BrtWsDim - Sheet维度
-        // 结构：rwFirst(4) + rwLast(4) + colFirst(4) + colLast(4)
-        if (rowCount > 0 && columnCount > 0) {
-            w.writeRecordHeader(Biff12RecordType.BrtWsDim, 16);
-            w.writeIntLE(0);           // rwFirst
-            w.writeIntLE(rowCount - 1); // rwLast
-            w.writeIntLE(0);           // colFirst
-            w.writeIntLE(columnCount - 1); // colLast
-        }
-        
-        // 视图记录（从用户文件复制）
-        writeViewRecords(w);
-        
-        // BrtBeginSheetData
         w.writeEmptyRecord(Biff12RecordType.BrtBeginSheetData);
         
-        // 行和单元格数据
         for (int row = 0; row < rowCount; row++) {
-            // BrtRowHdr
-            // 结构：rw(4) + ixfe(4) + miyRw(2) + flags(4) + ccolspan(4) + ...
             writeBrtRowHdr(w, row, columnCount);
             
-            // 单元格记录
             for (int col = 0; col < columnCount; col++) {
                 CellData data = supplier.get(row, col);
                 if (data != null && data.getType() != null) {
@@ -89,16 +72,80 @@ public final class SheetWriter {
             }
         }
         
-        // BrtEndSheetData
-        w.writeEmptyRecord(Biff12RecordType.BrtEndSheetData);
-        
-        // 页面设置相关记录（从用户文件复制）
-        writePageSetupRecords(w);
-        
-        // BrtEndSheet
-        w.writeEmptyRecord(Biff12RecordType.BrtEndSheet);
+        writeSheetFooter(w);
         
         return w.toByteArray();
+    }
+    
+    public void startStreaming(int columnCount) throws IOException {
+        int estimatedSize = 1024 * 1024; // 1MB initial buffer
+        this.streamingWriter = new Biff12Writer(estimatedSize);
+        this.streamingColumnCount = columnCount;
+        
+        writeSheetHeader(streamingWriter, 0, columnCount);
+        streamingWriter.writeEmptyRecord(Biff12RecordType.BrtBeginSheetData);
+    }
+    
+    public void appendRows(CellDataSupplier supplier, int startRow, int batchSize, int columnCount) 
+            throws IOException {
+        if (streamingWriter == null) {
+            throw new IllegalStateException("Streaming not started, call startStreaming() first");
+        }
+        
+        for (int row = startRow; row < startRow + batchSize; row++) {
+            writeBrtRowHdr(streamingWriter, row, columnCount);
+            
+            for (int col = 0; col < columnCount; col++) {
+                CellData data = supplier.get(row, col);
+                if (data != null && data.getType() != null) {
+                    writeCell(streamingWriter, row, col, data);
+                }
+            }
+        }
+    }
+    
+    public byte[] finalizeStreaming(int totalRows, int columnCount) throws IOException {
+        if (streamingWriter == null) {
+            throw new IllegalStateException("Streaming not started");
+        }
+        
+        writeSheetFooter(streamingWriter);
+        
+        byte[] result = streamingWriter.toByteArray();
+        streamingWriter = null;
+        streamingColumnCount = 0;
+        
+        return result;
+    }
+    
+    private void writeSheetHeader(Biff12Writer w, int rowCount, int columnCount) throws IOException {
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginSheet);
+        
+        writeBrtWsProp(w);
+        
+        if (rowCount > 0 && columnCount > 0) {
+            w.writeRecordHeader(Biff12RecordType.BrtWsDim, 16);
+            w.writeIntLE(0);
+            w.writeIntLE(rowCount - 1);
+            w.writeIntLE(0);
+            w.writeIntLE(columnCount - 1);
+        } else {
+            w.writeRecordHeader(Biff12RecordType.BrtWsDim, 16);
+            w.writeIntLE(0);
+            w.writeIntLE(0);
+            w.writeIntLE(0);
+            w.writeIntLE(0);
+        }
+        
+        writeViewRecords(w);
+    }
+    
+    private void writeSheetFooter(Biff12Writer w) throws IOException {
+        w.writeEmptyRecord(Biff12RecordType.BrtEndSheetData);
+        
+        writePageSetupRecords(w);
+        
+        w.writeEmptyRecord(Biff12RecordType.BrtEndSheet);
     }
     
     /**

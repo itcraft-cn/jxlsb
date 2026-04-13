@@ -9,11 +9,20 @@ import cn.itcraft.jxlsb.format.SheetWriter;
 import cn.itcraft.jxlsb.format.StylesWriter;
 import java.nio.file.Path;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 
 /**
  * XLSB文件写入器
- * 严格按照MS-XLSB规范实现
+ * 
+ * <p>提供两种API风格：
+ * <ul>
+ *   <li>writeBatch：一次性写入，适合内存数据或实时计算</li>
+ *   <li>startSheet + writeRows + endSheet：流式追加，适合数据库分页查询</li>
+ * </ul>
+ * 
+ * @author AI架构师
+ * @since 1.0.0
  */
 public final class XlsbWriter implements AutoCloseable {
     
@@ -22,6 +31,11 @@ public final class XlsbWriter implements AutoCloseable {
     private final WorkbookWriter workbookWriter;
     private final SheetWriter sheetWriter;
     private int sheetCount = 0;
+    
+    private String currentSheetName;
+    private int currentColumnCount;
+    private int currentRowCount;
+    private byte[] currentSheetData;
     
     private XlsbWriter(Builder builder) throws IOException {
         Objects.requireNonNull(builder.path, "Path must not be null");
@@ -32,7 +46,14 @@ public final class XlsbWriter implements AutoCloseable {
     }
     
     /**
-     * 批量写入Sheet数据
+     * 批量写入Sheet数据（一次性）
+     * 
+     * <p>适合场景：内存已有数据、或可实时计算生成数据
+     * 
+     * @param sheetName Sheet名称
+     * @param supplier 数据供应函数，接收(row, col)返回CellData
+     * @param rowCount 行数
+     * @param columnCount 列数
      */
     public void writeBatch(String sheetName, CellDataSupplier supplier,
                            int rowCount, int columnCount) throws IOException {
@@ -41,6 +62,109 @@ public final class XlsbWriter implements AutoCloseable {
         byte[] sheetData = sheetWriter.writeSheet(supplier, rowCount, columnCount);
         container.addEntry("xl/worksheets/sheet" + (sheetCount + 1) + ".bin", sheetData);
         sheetCount++;
+    }
+    
+    /**
+     * 开始Sheet流式写入
+     * 
+     * <p>适合场景：数据库分页查询、大文件流式处理
+     * 
+     * <p>使用示例：
+     * <pre>
+     * writer.startSheet("Orders", 5);
+     * int offset = 0;
+     * while (true) {
+     *     List<Order> batch = db.query(offset, 1000);
+     *     if (batch.isEmpty()) break;
+     *     writer.writeRows(batch, offset, (order, col) -> ...);
+     *     offset += batch.size();
+     * }
+     * writer.endSheet();
+     * </pre>
+     * 
+     * @param sheetName Sheet名称
+     * @param columnCount 列数（固定）
+     */
+    public void startSheet(String sheetName, int columnCount) throws IOException {
+        if (currentSheetName != null) {
+            throw new IllegalStateException("Previous sheet not ended, call endSheet() first");
+        }
+        this.currentSheetName = sheetName;
+        this.currentColumnCount = columnCount;
+        this.currentRowCount = 0;
+        
+        sheetWriter.startStreaming(columnCount);
+    }
+    
+    /**
+     * 流式追加行数据
+     * 
+     * @param dataList 数据列表
+     * @param startRow 起始行号（从0开始）
+     * @param supplier 数据供应函数，接收(data, col)返回CellData
+     */
+    public <T> void writeRows(List<T> dataList, int startRow, RowDataSupplier<T> supplier) 
+            throws IOException {
+        if (currentSheetName == null) {
+            throw new IllegalStateException("Sheet not started, call startSheet() first");
+        }
+        
+        int batchSize = dataList.size();
+        CellDataSupplier cellSupplier = (row, col) -> {
+            int index = row - startRow;
+            if (index >= 0 && index < dataList.size()) {
+                return supplier.get(dataList.get(index), col);
+            }
+            return CellData.blank();
+        };
+        
+        sheetWriter.appendRows(cellSupplier, startRow, batchSize, currentColumnCount);
+        currentRowCount = Math.max(currentRowCount, startRow + batchSize);
+    }
+    
+    /**
+     * 流式追加行数据（数组）
+     * 
+     * @param dataArray 数据数组
+     * @param startRow 起始行号（从0开始）
+     * @param supplier 数据供应函数
+     */
+    public <T> void writeRows(T[] dataArray, int startRow, RowDataSupplier<T> supplier) 
+            throws IOException {
+        if (currentSheetName == null) {
+            throw new IllegalStateException("Sheet not started, call startSheet() first");
+        }
+        
+        int batchSize = dataArray.length;
+        CellDataSupplier cellSupplier = (row, col) -> {
+            int index = row - startRow;
+            if (index >= 0 && index < dataArray.length) {
+                return supplier.get(dataArray[index], col);
+            }
+            return CellData.blank();
+        };
+        
+        sheetWriter.appendRows(cellSupplier, startRow, batchSize, currentColumnCount);
+        currentRowCount = Math.max(currentRowCount, startRow + batchSize);
+    }
+    
+    /**
+     * 结束Sheet流式写入
+     */
+    public void endSheet() throws IOException {
+        if (currentSheetName == null) {
+            throw new IllegalStateException("Sheet not started");
+        }
+        
+        workbookWriter.addSheet(currentSheetName);
+        
+        byte[] sheetData = sheetWriter.finalizeStreaming(currentRowCount, currentColumnCount);
+        container.addEntry("xl/worksheets/sheet" + (sheetCount + 1) + ".bin", sheetData);
+        sheetCount++;
+        
+        currentSheetName = null;
+        currentColumnCount = 0;
+        currentRowCount = 0;
     }
     
     int getSheetCount() {
