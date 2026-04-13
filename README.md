@@ -1,35 +1,91 @@
 # jxlsb - Java XLSB Library
 
-纯Java实现的XLSB（Excel Binary Workbook）格式读写库，具有以下特性：
+纯Java实现的XLSB（Excel Binary Workbook）格式读写库。
+
+## 特性
 
 - **零依赖**：仅依赖SLF4J，无需POI等重型库
-- **堆外内存**：全量堆外内存架构，追求零GC压力
-- **流式API**：支持大规模数据流式写入
-- **企业级质量**：支持Java 8+，完善的测试覆盖
-
-## 核心功能
-
-- ✅ XLSB文件写入（数字、文本、布尔、日期、空白）
-- ✅ Excel/WPS兼容性验证通过
-- ✅ 性能优异：比POI快2-3倍，文件小30-50%
-- 🚧 XLSB文件读取（开发中）
-- 🚧 样式和格式支持（开发中）
+- **堆外内存**：全量堆外内存架构，零GC压力
+- **高性能**：比POI快3x，比EasyExcel快2.5x，文件小35-50%
+- **企业级**：Java 8+支持，Multi-Release JAR（Java 23+自动使用Foreign Memory API）
 
 ## 性能数据
 
-**100K行 × 10列测试结果：**
+**100K行 × 10列：**
 
 | 库 | 文件大小 | 写入时间 | 格式 |
-|----|---------|---------|------|
-| jxlsb | 2.61 MB | 590 ms | XLSB |
-| FastExcel | 5.42 MB | 591 ms | XLSX |
-| EasyExcel | 4.18 MB | 1173 ms | XLSX |
-| POI | 4.16 MB | 1826 ms | XLSX |
+|---|---|---|---|
+| **jxlsb** | **2.72 MB** | **453 ms** | XLSB |
+| FastExcel | 5.42 MB | 521 ms | XLSX |
+| EasyExcel | 4.21 MB | 1121 ms | XLSX |
+| POI | 4.16 MB | 1528 ms | XLSX |
 
-**优势总结：**
-- 文件大小：比POI小37%，比EasyExcel小38%
-- 写入速度：比POI快3倍，比EasyExcel快2倍
-- 内存占用：堆外内存架构，GC压力极低
+**1M行 × 10列：**
+
+| 库 | 文件大小 | 写入时间 | 格式 |
+|---|---|---|---|
+| **jxlsb** | **26.71 MB** | **4647 ms** | XLSB |
+| FastExcel | 55.00 MB | 4621 ms | XLSX |
+| EasyExcel | 42.54 MB | 9405 ms | XLSX |
+| POI | 42.25 MB | 8334 ms | XLSX |
+
+## API 场景适配
+
+### 写入 API
+
+| API | 适用场景 | 数据来源 | 内存压力 | 示例 |
+|---|---|---|---|---|
+| **writeBatch** | 计算报表、内存数据导出 | 内存已有 / 实时计算 | 无 | 函数式一次性写入 |
+| **startSheet + writeRows + endSheet** | 数据库分页查询、大文件流式处理 | DB分页 / 文件流 | 低 | 分批追加写入 |
+
+### 读取 API
+
+| API | 适用场景 | 数据量 | 示例 |
+|---|---|---|---|
+| **forEachRow** | 流式处理、数据清洗 | 任意 | 回调处理每行 |
+| **readRows** | 分页读取、批量处理 | 大文件 | List/Array批量返回 |
+
+### 场景选择指南
+
+**写入场景**：
+
+```java
+// 场景1: 内存数据导出（推荐 writeBatch）
+List<Product> products = cache.getAll(); // 已在内存
+writer.writeBatch("Products", (row, col) -> toCell(products.get(row), col), products.size(), 5);
+
+// 场景2: 数据库分页导出（推荐 writeRows 流式追加）
+writer.startSheet("Orders", 5);
+int offset = 0;
+while (true) {
+    List<Order> batch = db.query(offset, 1000); // 分页查询，避免OOM
+    if (batch.isEmpty()) break;
+    writer.writeRows(batch, offset, (order, col) -> toCell(order, col));
+    offset += batch.size();
+}
+writer.endSheet();
+```
+
+**读取场景**：
+
+```java
+// 场景1: 流式处理（推荐 forEachRow）
+reader.forEachRow(0, new RowConsumer() {
+    void onCell(int row, int col, CellData data) {
+        // 直接处理，无需存储
+        processCell(data);
+    }
+});
+
+// 场景2: 分页批量处理（推荐 readRows）
+int offset = 0;
+while (true) {
+    List<CellData[]> batch = reader.readRows(0, offset, 1000);
+    if (batch.isEmpty()) break;
+    batchProcess(batch); // 批量处理1000行
+    offset += 1000;
+}
+```
 
 ## 快速开始
 
@@ -43,358 +99,136 @@
 </dependency>
 ```
 
-### 5分钟教程
-
-#### 1. 写入XLSB文件
+### 写入示例
 
 ```java
-import cn.itcraft.jxlsb.api.XlsbWriter;
-import cn.itcraft.jxlsb.api.CellData;
-import java.nio.file.Path;
+import cn.itcraft.jxlsb.api.*;
 import java.nio.file.Paths;
 
-Path file = Paths.get("output.xlsb");
-
-try (XlsbWriter writer = XlsbWriter.builder()
-        .path(file)
-        .build()) {
-    
-    writer.writeBatch("Sheet1", 
-        (row, col) -> CellData.number(row * 100.0 + col),
-        1000, 10);
+// 一次性写入（内存数据）
+try (XlsbWriter writer = XlsbWriter.builder().path(Paths.get("output.xlsb")).build()) {
+    writer.writeBatch("Sheet1", (row, col) -> CellData.number(row * col), 1000, 10);
 }
-```
 
-#### 2. 读取XLSB文件
-
-```java
-import cn.itcraft.jxlsb.api.XlsbReader;
-import cn.itcraft.jxlsb.data.OffHeapSheet;
-import cn.itcraft.jxlsb.data.OffHeapRow;
-import cn.itcraft.jxlsb.data.OffHeapCell;
-
-try (XlsbReader reader = XlsbReader.builder()
-        .path(Paths.get("data.xlsb"))
-        .build()) {
-    
-    reader.readSheets(sheet -> {
-        System.out.println("Sheet: " + sheet.getSheetName());
-        
-        for (OffHeapRow row : sheet) {
-            for (int i = 0; i < row.getColumnCount(); i++) {
-                OffHeapCell cell = row.getCell(i);
-                System.out.print(formatCell(cell) + " | ");
+// 分页追加写入（数据库查询）
+try (XlsbWriter writer = XlsbWriter.builder().path(Paths.get("output.xlsb")).build()) {
+    writer.startSheet("Orders", 4);
+    int offset = 0;
+    while (true) {
+        List<Order> batch = db.query(offset, 1000);
+        if (batch.isEmpty()) break;
+        writer.writeRows(batch, offset, (order, col) -> {
+            switch (col) {
+                case 0: return CellData.number(order.getId());
+                case 1: return CellData.text(order.getName());
+                case 2: return CellData.number(order.getAmount());
+                case 3: return CellData.date(order.getTime());
+                default: return CellData.blank();
             }
-            System.out.println();
-        }
-    });
-}
-```
-
-#### 3. 支持的单元格类型
-
-```java
-// 文本
-CellData.text("Hello World")
-
-// 数字
-CellData.number(3.14159)
-
-// 日期（Unix毫秒时间戳）
-CellData.date(System.currentTimeMillis())
-
-// 布尔
-CellData.bool(true)
-
-// 空白
-CellData.blank()
-```
-
-## API概览
-
-### XlsbWriter
-
-**Builder模式构建：**
-```java
-XlsbWriter writer = XlsbWriter.builder()
-    .path(Paths.get("output.xlsb"))
-    .build();
-```
-
-**批量写入API：**
-```java
-writer.writeBatch("SheetName", 
-    (row, col) -> {
-        // 返回CellData
-        return CellData.text("数据-" + row);
-    },
-    rowCount,    // 行数
-    columnCount  // 列数
-);
-```
-
-**流式写入API：**
-```java
-writer.writeBatch("Sheet1",
-    (row, col) -> {
-        if (col % 3 == 0) return CellData.number(row * col);
-        if (col % 3 == 1) return CellData.text("文本");
-        return CellData.date(System.currentTimeMillis());
-    },
-    100000, 50);
-```
-
-### XlsbReader
-
-**Builder模式构建：**
-```java
-XlsbReader reader = XlsbReader.builder()
-    .path(Paths.get("input.xlsb"))
-    .build();
-```
-
-**流式读取API：**
-```java
-reader.readSheets(sheet -> {
-    // 处理每个Sheet
-    for (OffHeapRow row : sheet) {
-        for (OffHeapCell cell : row) {
-            // 处理单元格
-        }
+        });
+        offset += batch.size();
     }
-});
-```
-
-**指定Sheet读取：**
-```java
-OffHeapSheet sheet = reader.readSheet(0); // 读取第一个Sheet
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      API Layer                               │
-│  XlsbReader / XlsbWriter + Builder pattern                   │
-├─────────────────────────────────────────────────────────────┤
-│                    Data Structure Layer                      │
-│  OffHeapCell / OffHeapRow / OffHeapSheet / OffHeapWorkbook   │
-├─────────────────────────────────────────────────────────────┤
-│                    Memory Management Layer                   │
-│  MemoryBlock / OffHeapAllocator / MemoryPool                 │
-│  ByteBufferAllocator (Java 8+)                               │
-├─────────────────────────────────────────────────────────────┤
-│                   XLSB Binary Format Layer                   │
-│  RecordParser / RecordWriter / BIFF12 Records                │
-│  CellRecord / BeginSheetRecord / BeginRowRecord / ...        │
-├─────────────────────────────────────────────────────────────┤
-│                      IO Layer                                │
-│  OffHeapInputStream / OffHeapOutputStream                    │
-│  FileChannel zero-copy read/write                            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Quick Start
-
-### Maven Dependency
-
-```xml
-<dependency>
-    <groupId>cn.itcraft</groupId>
-    <artifactId>jxlsb</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-</dependency>
-```
-
-### Writing XLSB
-
-```java
-Path file = Paths.get("output.xlsb");
-
-try (XlsbWriter writer = XlsbWriter.builder()
-        .path(file)
-        .build()) {
-    
-    writer.writeBatch("Sheet1", 
-        (row, col) -> CellData.number(row * 100.0 + col),
-        1000, 10);
+    writer.endSheet();
 }
 ```
 
-### Reading XLSB
+### 读取示例
 
 ```java
-Path file = Paths.get("data.xlsb");
+import cn.itcraft.jxlsb.api.*;
 
-try (XlsbReader reader = XlsbReader.builder()
-        .path(file)
-        .build()) {
-    
-    reader.readSheets(sheet -> {
-        System.out.println("Sheet: " + sheet.getSheetName());
-        
-        for (OffHeapRow row : sheet) {
-            for (int i = 0; i < row.getColumnCount(); i++) {
-                OffHeapCell cell = row.getCell(i);
-                System.out.print(formatCell(cell) + " | ");
-            }
-            System.out.println();
+try (XlsbReader reader = XlsbReader.builder().path(Paths.get("data.xlsb")).build()) {
+    // 流式处理
+    reader.forEachRow(0, new RowConsumer() {
+        void onCell(int row, int col, CellData data) {
+            System.out.println(row + "," + col + ": " + data.getValue());
         }
     });
+    
+    // 分页批量读取
+    int offset = 0;
+    while (true) {
+        List<CellData[]> batch = reader.readRows(0, offset, 1000);
+        if (batch.isEmpty()) break;
+        // 处理batch
+        offset += batch.size();
+    }
 }
 ```
 
-### Cell Types
+### 单元格类型
 
 ```java
-// Text
-CellData.text("Hello World")
-
-// Number
-CellData.number(3.14159)
-
-// Date (Unix timestamp in milliseconds)
-CellData.date(System.currentTimeMillis())
-
-// Boolean
-CellData.bool(true)
-
-// Blank
-CellData.blank()
+CellData.text("Hello")       // 文本
+CellData.number(3.14159)     // 数字
+CellData.date(timestamp)     // 日期（毫秒时间戳）
+CellData.bool(true)          // 布尔
+CellData.blank()             // 空白
 ```
 
-## Performance
+## 功能状态
 
-| Metric | Target | Notes |
-|--------|--------|-------|
-| Memory Usage | Off-heap only | All data structures use off-heap memory |
-| GC Pressure | Minimal | No large objects on Java heap |
-| Streaming | Supported | Process GB-scale files |
+| 功能 | 状态 | 说明 |
+|---|---|---|
+| 数字单元格 | ✅ 完整 | 支持整数、浮点数 |
+| 文本单元格 | ✅ 完整 | SST优化，大文本支持 |
+| 布尔单元格 | ✅ 完整 | |
+| 日期单元格 | ✅ 完整 | Excel日期序列号 |
+| 空白单元格 | ✅ 完整 | |
+| 样式系统 | ✅ 完整 | 字体、边框、填充、对齐 |
+| 数字格式 | ✅ 完整 | 自定义格式字符串 |
+| 流式写入 | ✅ 完整 | startSheet/writeRows/endSheet |
+| 流式读取 | ✅ 完整 | forEachRow回调 |
+| 分页读取 | ✅ 完整 | readRows批量返回 |
+| 公式 | ❌ 不支持 | |
+| 图表 | ❌ 不支持 | |
+| 条件格式 | ❌ 不支持 | |
+| 宏/VBA | ❌ 不支持 | |
 
-## BIFF12 Records Supported
+## 生产就绪评估
 
-| Record | Type Code | Description |
-|--------|-----------|-------------|
-| BEGIN_BOOK | 0x0083 | Workbook start |
-| END_BOOK | 0x0084 | Workbook end |
-| BEGIN_SHEET | 0x0085 | Sheet start |
-| END_SHEET | 0x0086 | Sheet end |
-| BEGIN_ROW | 0x0087 | Row start |
-| END_ROW | 0x0088 | Row end |
-| VERSION | 0x0080 | Version info |
-| CELL | 0x0143 | Cell data |
-| STRING | 0x00F9 | String data |
-| **Extended Records** | | |
-| INDEX | 0x0089 | Row index optimization |
-| FORMAT | 0x0041 | Cell format strings |
-| XF | 0x0043 | Extended format (font/align/fill/border) |
-| FORMULA | 0x0108 | Formula support |
-| MERGE_CELL | 0x00B7 | Merged cells |
-| CONDITIONAL_FORMAT | 0x01CD | Conditional formatting |
-| DATA_VALIDATION | 0x01B2 | Data validation |
+**推荐场景**：
+- ✅ 大数据量Excel导出（100K-1M行）
+- ✅ 数据库分页查询导出
+- ✅ 存储成本敏感（文件小50%）
+- ✅ 内存受限环境（堆外内存）
 
-## Advanced Features
+**不推荐场景**：
+- ❌ 需要公式、图表
+- ❌ 需要复杂样式（合并单元格、条件格式）
+- ❌ 需要读取带公式的第三方XLSB
 
-### Java 17+ MemorySegment Support
+## 架构
 
-The library automatically uses `MemorySegment` (Foreign Memory API) on Java 17+ for better performance:
-
-```java
-// Automatic selection via ServiceLoader
-// Java 8: ByteBufferAllocator (priority 10)
-// Java 17+: MemorySegmentAllocator (priority 20) 
-OffHeapAllocator allocator = AllocatorFactory.createDefaultAllocator();
+```
+┌─────────────────────────────────────────┐
+│           API Layer                      │
+│  XlsbWriter / XlsbReader                 │
+│  writeBatch / writeRows / readRows       │
+├─────────────────────────────────────────┤
+│       Data Structure Layer               │
+│  CellData / RowDataSupplier              │
+├─────────────────────────────────────────┤
+│       Memory Management Layer            │
+│  ByteBufferAllocator (Java 8)            │
+│  MemorySegmentAllocator (Java 23+)       │
+├─────────────────────────────────────────┤
+│       BIFF12 Format Layer                │
+│  BrtCellRk / BrtCellReal / BrtCellIsst   │
+├─────────────────────────────────────────┤
+│           IO Layer                       │
+│  ZipContainer / FileChannel              │
+└─────────────────────────────────────────┘
 ```
 
-### Formula Support
+## 测试覆盖
 
-```java
-FormulaRecord record = FormulaRecord.create(
-    10, 5,                              // row, col
-    CellType.NUMBER, 42.0,              // result type and value
-    "SUM(A1:A10)", dataBlock);          // formula string
-```
-
-### Cell Formatting
-
-```java
-// Create format
-FormatRecord format = FormatRecord.create(
-    FormatRecord.FORMAT_DATE, "yyyy-mm-dd", dataBlock);
-
-// Create extended format
-XFRecord xf = XFRecord.create(
-    0, FormatRecord.FORMAT_NUMBER,      // font, format
-    XFRecord.ALIGN_RIGHT, XFRecord.VERTICAL_CENTER,
-    0, 0, dataBlock);                   // fill, border
-```
-
-### Merged Cells
-
-```java
-MergeCellRecord merge = MergeCellRecord.create(
-    0, 2, 0, 3, dataBlock);  // merge rows 0-2, cols 0-3
-```
-
-### Data Validation
-
-```java
-DataValidationRecord validation = DataValidationRecord.create(
-    DataValidationRecord.TYPE_WHOLE,    // validation type
-    DataValidationRecord.ERROR_STYLE_STOP,
-    false,                              // allow blank
-    "BETWEEN 1 AND 100", dataBlock);    // validation rule
-```
-
-### Conditional Formatting
-
-```java
-ConditionalFormatRecord cf = ConditionalFormatRecord.create(
-    ConditionalFormatRecord.TYPE_CELL_IS,
-    ConditionalFormatRecord.OPERATOR_GREATER_THAN,
-    "100", dataBlock);                  // condition formula
-```
-
-## Build
-
-```bash
-# Compile
-mvn clean compile
-
-# Run tests
-mvn clean test
-
-# Package
-mvn clean package -DskipTests
-```
-
-## Project Statistics
-
-- Java Source Files: 68
-- Test Cases: 61 (100% pass)
-- Test Coverage: Memory, Format, Data, IO, API layers
-- BIFF12 Record Types: 15+ supported
-- Git Commits: 18
-
-## Dependencies
-
-**Runtime:**
-- Java 8+ (Java 17+ recommended for MemorySegment support)
-- SLF4J API (users must provide implementation)
-
-**Build:**
-- Maven 3.6+
-- For Java 17+ features: JDK 17+ with `--enable-preview` or JDK 21+
-
-**Test:**
-- JUnit 5
-- Mockito
-- JMH (benchmarks)
+- **110个测试全部通过**
+- 内存层：分配、读写、关闭、泄漏检测
+- 格式层：BIFF12记录、VarInt编码
+- API层：写入、读取、流式追加
+- 性能测试：100K/1M行对比
 
 ## License
 
 Apache License 2.0
-
-## References
-
-- [MS-XLSB]: Excel Binary Workbook (.xlsb) File Format - Microsoft Open Specifications

@@ -27,14 +27,88 @@ import java.nio.charset.StandardCharsets;
  */
 public final class SheetReader implements AutoCloseable {
     
+    public static final class BatchCompleteException extends RuntimeException {
+    }
+    
     private final InputStream inputStream;
     private final SharedStringsTable sst;
     private final OffHeapAllocator allocator;
+    private int currentRow = -1;
+    private RowHandler currentHandler = null;
     
     public SheetReader(InputStream inputStream, SharedStringsTable sst) {
         this.inputStream = inputStream;
         this.sst = sst;
         this.allocator = AllocatorFactory.createDefaultAllocator();
+    }
+    
+    private void handleBrtRowHdr(byte[] buffer, int offset, int size, RowHandler handler) {
+        if (currentRow >= 0 && currentHandler != null) {
+            currentHandler.onRowEnd(currentRow);
+        }
+        
+        currentRow = readIntLE(buffer, offset);
+        currentHandler = handler;
+        
+        // BrtRowHdr结构: rw(4) + ixfe(4) + miyRw(2) + flags(3) + ccolspan(4) + rgBrtColspan(8*n)
+        // offset + 4 = ixfe (style index)
+        // offset + 8 = miyRw (row height)
+        // offset + 10 = flags
+        // offset + 13 = ccolspan (number of col spans)
+        int numSpans = readIntLE(buffer, offset + 13);
+        
+        int lastCol = 0;
+        for (int seg = 0; seg < numSpans; seg++) {
+            int segStartCol = readIntLE(buffer, offset + 17 + seg * 8);
+            int segEndCol = readIntLE(buffer, offset + 21 + seg * 8);
+            lastCol = Math.max(lastCol, segEndCol);
+        }
+        
+        int columnCount = lastCol + 1;
+        handler.onRowStart(currentRow, columnCount);
+    }
+    
+    private void handleBrtCellRk(byte[] buffer, int offset, int size, RowHandler handler) {
+        int col = readIntLE(buffer, offset);
+        int rkValue = readIntLE(buffer, offset + 8);
+        
+        double value = decodeRk(rkValue);
+        handler.onCellNumber(currentRow, col, value);
+    }
+    
+    private void handleBrtCellReal(byte[] buffer, int offset, int size, RowHandler handler) {
+        int col = readIntLE(buffer, offset);
+        double value = readDoubleLE(buffer, offset + 8);
+        
+        handler.onCellNumber(currentRow, col, value);
+    }
+    
+    private void handleBrtCellSt(byte[] buffer, int offset, int size, RowHandler handler) {
+        int col = readIntLE(buffer, offset);
+        int sstIndex = readIntLE(buffer, offset + 8);
+        
+        String value = sst.getString(sstIndex);
+        handler.onCellText(currentRow, col, value);
+    }
+    
+    private void handleBrtCellBool(byte[] buffer, int offset, int size, RowHandler handler) {
+        int col = readIntLE(buffer, offset);
+        boolean value = buffer[offset + 8] != 0;
+        
+        handler.onCellBoolean(currentRow, col, value);
+    }
+    
+    private void handleBrtCellBlank(byte[] buffer, int offset, int size, RowHandler handler) {
+        int col = readIntLE(buffer, offset);
+        
+        handler.onCellBlank(currentRow, col);
+    }
+    
+    private void handleBrtCellIsst(byte[] buffer, int offset, int size, RowHandler handler) {
+        int col = readIntLE(buffer, offset);
+        
+        String value = readXLWideString(buffer, offset + 8);
+        handler.onCellText(currentRow, col, value);
     }
     
     public void readRows(RowHandler handler) throws IOException {
@@ -43,24 +117,37 @@ public final class SheetReader implements AutoCloseable {
         int offset = 0;
         int totalRead = 0;
         
-        while ((bytesRead = inputStream.read(buffer, offset, buffer.length - offset)) != -1) {
-            offset += bytesRead;
-            totalRead += bytesRead;
-            
-            int processed = processSheetBuffer(buffer, offset, handler);
-            
-            if (processed > 0 && processed < offset) {
-                byte[] remaining = new byte[offset - processed];
-                System.arraycopy(buffer, processed, remaining, 0, remaining.length);
-                System.arraycopy(remaining, 0, buffer, 0, remaining.length);
-                offset = remaining.length;
-            } else {
-                offset = 0;
+        try {
+            while ((bytesRead = inputStream.read(buffer, offset, buffer.length - offset)) != -1) {
+                offset += bytesRead;
+                totalRead += bytesRead;
+                
+                int processed = processSheetBuffer(buffer, offset, handler);
+                
+                if (processed > 0 && processed < offset) {
+                    byte[] remaining = new byte[offset - processed];
+                    System.arraycopy(buffer, processed, remaining, 0, remaining.length);
+                    System.arraycopy(remaining, 0, buffer, 0, remaining.length);
+                    offset = remaining.length;
+                } else {
+                    offset = 0;
+                }
             }
-        }
-        
-        if (offset > 0) {
-            processSheetBuffer(buffer, offset, handler);
+            
+            if (offset > 0) {
+                processSheetBuffer(buffer, offset, handler);
+            }
+            
+            // 结束最后一行
+            if (currentRow >= 0 && currentHandler != null) {
+                currentHandler.onRowEnd(currentRow);
+            }
+        } catch (BatchCompleteException e) {
+            // 正常结束，读取到目标行数
+            // 结束最后一行
+            if (currentRow >= 0 && currentHandler != null) {
+                currentHandler.onRowEnd(currentRow);
+            }
         }
     }
     
@@ -77,6 +164,11 @@ public final class SheetReader implements AutoCloseable {
             int recordSize = VarIntReader.readVarSize(buffer, pos);
             int sizeBytes = VarIntReader.varSizeSize(recordSize);
             pos += sizeBytes;
+            
+            if (recordSize < 0 || recordSize > length) {
+                pos += Math.max(0, recordSize);
+                continue;
+            }
             
             if (recordSize > 0 && pos + recordSize > length) {
                 return pos - typeSize - sizeBytes;
@@ -114,69 +206,14 @@ public final class SheetReader implements AutoCloseable {
                 }
                 
                 pos += recordSize;
+            } catch (BatchCompleteException e) {
+                throw e; // 重新抛出，停止读取
             } catch (Exception e) {
                 pos += recordSize;
             }
         }
         
         return pos;
-    }
-    
-    private void handleBrtRowHdr(byte[] buffer, int offset, int size, RowHandler handler) {
-        int row = readIntLE(buffer, offset);
-        int firstCol = readIntLE(buffer, offset + 4);
-        int lastCol = readIntLE(buffer, offset + 8);
-        
-        handler.onRowStart(row, lastCol - firstCol + 1);
-    }
-    
-    private void handleBrtCellRk(byte[] buffer, int offset, int size, RowHandler handler) {
-        int row = readIntLE(buffer, offset);
-        int col = readIntLE(buffer, offset + 4);
-        int rkValue = readIntLE(buffer, offset + 12);
-        
-        double value = decodeRk(rkValue);
-        handler.onCellNumber(row, col, value);
-    }
-    
-    private void handleBrtCellReal(byte[] buffer, int offset, int size, RowHandler handler) {
-        int row = readIntLE(buffer, offset);
-        int col = readIntLE(buffer, offset + 4);
-        double value = readDoubleLE(buffer, offset + 12);
-        
-        handler.onCellNumber(row, col, value);
-    }
-    
-    private void handleBrtCellSt(byte[] buffer, int offset, int size, RowHandler handler) {
-        int row = readIntLE(buffer, offset);
-        int col = readIntLE(buffer, offset + 4);
-        int sstIndex = readIntLE(buffer, offset + 12);
-        
-        String value = sst.getString(sstIndex);
-        handler.onCellText(row, col, value);
-    }
-    
-    private void handleBrtCellBool(byte[] buffer, int offset, int size, RowHandler handler) {
-        int row = readIntLE(buffer, offset);
-        int col = readIntLE(buffer, offset + 4);
-        boolean value = buffer[offset + 12] != 0;
-        
-        handler.onCellBoolean(row, col, value);
-    }
-    
-    private void handleBrtCellBlank(byte[] buffer, int offset, int size, RowHandler handler) {
-        int row = readIntLE(buffer, offset);
-        int col = readIntLE(buffer, offset + 4);
-        
-        handler.onCellBlank(row, col);
-    }
-    
-    private void handleBrtCellIsst(byte[] buffer, int offset, int size, RowHandler handler) {
-        int row = readIntLE(buffer, offset);
-        int col = readIntLE(buffer, offset + 4);
-        
-        String value = readXLWideString(buffer, offset + 12);
-        handler.onCellText(row, col, value);
     }
     
     private double decodeRk(int rkValue) {
