@@ -249,7 +249,9 @@ public final class XlsbWriter implements AutoCloseable {
         sb.append("xmlns:dc=\"http://purl.org/dc/elements/1.1/\" ");
         sb.append("xmlns:dcterms=\"http://purl.org/dc/terms/\" ");
         sb.append("xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">");
-        sb.append("<dc:creator>created by jxlsb</dc:creator>");
+        sb.append("<dc:creator>jxlsb</dc:creator>");
+        sb.append("<cp:lastModifiedBy>jxlsb</cp:lastModifiedBy>");
+        sb.append("<dc:description>created by jxlsb</dc:description>");
         String now = java.time.Instant.now().toString();
         sb.append("<dcterms:created xsi:type=\"dcterms:W3CDTF\">").append(now).append("</dcterms:created>");
         sb.append("<dcterms:modified xsi:type=\"dcterms:W3CDTF\">").append(now).append("</dcterms:modified>");

@@ -25,8 +25,18 @@ class CreatorTagTest {
             assertNotNull(coreEntry, "core.xml should exist");
             
             String coreContent = new String(zf.getInputStream(coreEntry).readAllBytes());
-            assertTrue(coreContent.contains("<dc:creator>created by jxlsb</dc:creator>"),
-                "core.xml should contain creator tag");
+            
+            // 作者 = jxlsb
+            assertTrue(coreContent.contains("<dc:creator>jxlsb</dc:creator>"),
+                "core.xml should contain creator tag with 'jxlsb'");
+            
+            // 最后修改者 = jxlsb
+            assertTrue(coreContent.contains("<cp:lastModifiedBy>jxlsb</cp:lastModifiedBy>"),
+                "core.xml should contain lastModifiedBy tag");
+            
+            // 备注 = created by jxlsb
+            assertTrue(coreContent.contains("<dc:description>created by jxlsb</dc:description>"),
+                "core.xml should contain description tag");
             
             ZipEntry appEntry = zf.getEntry("docProps/app.xml");
             assertNotNull(appEntry, "app.xml should exist");
@@ -36,7 +46,7 @@ class CreatorTagTest {
                 "app.xml should contain Application tag");
         }
         
-        System.out.println("✅ Creator tag verified: 'created by jxlsb' in core.xml");
-        System.out.println("✅ Application tag verified: 'jxlsb' in app.xml");
+        System.out.println("✅ 作者: jxlsb");
+        System.out.println("✅ 备注: created by jxlsb");
     }
 }
