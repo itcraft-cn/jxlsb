@@ -20,11 +20,13 @@ public final class SheetParser {
         public final int row;
         public final int col;
         public final CellData data;
+        public final int styleIndex;
         
-        CellInfo(int row, int col, CellData data) {
+        CellInfo(int row, int col, CellData data, int styleIndex) {
             this.row = row;
             this.col = col;
             this.data = data;
+            this.styleIndex = styleIndex;
         }
     }
     
@@ -127,44 +129,56 @@ public final class SheetParser {
     
     private void handleCellIsst(byte[] buffer, int offset, int size, int row) {
         int col = readIntLE(buffer, offset);
+        int styleIndex = readStyleIndex(buffer, offset);
         int sstIdx = readIntLE(buffer, offset + 8);
         String text = sst.getString(sstIdx);
         if (text != null) {
-            cells.add(new CellInfo(row, col, CellData.text(text)));
+            cells.add(new CellInfo(row, col, CellData.text(text), styleIndex));
             maxCol = Math.max(maxCol, col);
         }
     }
     
     private void handleCellSt(byte[] buffer, int offset, int size, int row) {
         int col = readIntLE(buffer, offset);
+        int styleIndex = readStyleIndex(buffer, offset);
         int sstIdx = readIntLE(buffer, offset + 8);
         String text = sst.getString(sstIdx);
         if (text != null) {
-            cells.add(new CellInfo(row, col, CellData.text(text)));
+            cells.add(new CellInfo(row, col, CellData.text(text), styleIndex));
             maxCol = Math.max(maxCol, col);
         }
     }
     
     private void handleCellReal(byte[] buffer, int offset, int size, int row) {
         int col = readIntLE(buffer, offset);
+        int styleIndex = readStyleIndex(buffer, offset);
         double value = readDoubleLE(buffer, offset + 8);
-        cells.add(new CellInfo(row, col, CellData.number(value)));
+        cells.add(new CellInfo(row, col, CellData.number(value), styleIndex));
         maxCol = Math.max(maxCol, col);
     }
     
     private void handleCellRk(byte[] buffer, int offset, int size, int row) {
         int col = readIntLE(buffer, offset);
+        int styleIndex = readStyleIndex(buffer, offset);
         int rkValue = readIntLE(buffer, offset + 8);
         double value = decodeRk(rkValue);
-        cells.add(new CellInfo(row, col, CellData.number(value)));
+        cells.add(new CellInfo(row, col, CellData.number(value), styleIndex));
         maxCol = Math.max(maxCol, col);
     }
     
     private void handleCellBool(byte[] buffer, int offset, int size, int row) {
         int col = readIntLE(buffer, offset);
+        int styleIndex = readStyleIndex(buffer, offset);
         boolean value = buffer[offset + 8] != 0;
-        cells.add(new CellInfo(row, col, CellData.bool(value)));
+        cells.add(new CellInfo(row, col, CellData.bool(value), styleIndex));
         maxCol = Math.max(maxCol, col);
+    }
+    
+    private int readStyleIndex(byte[] buffer, int offset) {
+        if (offset + 7 > buffer.length) return 0;
+        return (buffer[offset + 4] & 0xFF) |
+               ((buffer[offset + 5] & 0xFF) << 8) |
+               ((buffer[offset + 6] & 0xFF) << 16);
     }
     
     private double decodeRk(int rkValue) {

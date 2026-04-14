@@ -187,31 +187,46 @@ public final class SheetWriter {
      * 写入单元格记录
      */
     private void writeCell(Biff12Writer w, int row, int col, CellData data) throws IOException {
+        writeCellWithStyle(w, row, col, data, -1);
+    }
+    
+    /**
+     * 写入单元格记录（指定styleIndex）
+     * 当styleIndex >= 0时使用指定值，否则根据data格式计算
+     */
+    private void writeCellWithStyle(Biff12Writer w, int row, int col, CellData data, int styleIndex) 
+            throws IOException {
+        int actualStyleIndex = styleIndex >= 0 ? styleIndex : 0;
+        
         switch (data.getType()) {
             case NUMBER:
                 double num = (Double) data.getValue();
-                int numStyleId = getStyleIdForFormat(data);
+                if (styleIndex < 0) {
+                    actualStyleIndex = getStyleIdForFormat(data);
+                }
                 if (num == Math.floor(num) && num >= MIN_RK_INTEGER && num <= MAX_RK_INTEGER) {
-                    writeBrtCellRk(w, row, col, (int) num, numStyleId);
+                    writeBrtCellRk(w, row, col, (int) num, actualStyleIndex);
                 } else {
-                    writeBrtCellReal(w, row, col, num, numStyleId);
+                    writeBrtCellReal(w, row, col, num, actualStyleIndex);
                 }
                 break;
             case TEXT:
                 int sstIdx = sst.addString((String) data.getValue());
-                writeBrtCellIsst(w, row, col, sstIdx);
+                writeBrtCellIsst(w, row, col, sstIdx, actualStyleIndex);
                 break;
             case DATE:
                 long timestamp = (Long) data.getValue();
                 double excelDate = toExcelDate(timestamp);
-                int dateStyleId = getDateStyleIdForFormat(data);
-                writeBrtCellReal(w, row, col, excelDate, dateStyleId);
+                if (styleIndex < 0) {
+                    actualStyleIndex = getDateStyleIdForFormat(data);
+                }
+                writeBrtCellReal(w, row, col, excelDate, actualStyleIndex);
                 break;
             case BOOLEAN:
-                writeBrtCellBool(w, row, col, (Boolean) data.getValue());
+                writeBrtCellBool(w, row, col, (Boolean) data.getValue(), actualStyleIndex);
                 break;
             case BLANK:
-                writeBrtCellBlank(w, row, col);
+                writeBrtCellBlank(w, row, col, actualStyleIndex);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown cell type: " + data.getType());
@@ -294,12 +309,12 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
      * 写入BrtCellIsst记录（字符串索引）
      * 结构：cell(8) + isst(4)
      */
-    private void writeBrtCellIsst(Biff12Writer w, int row, int col, int sstIndex) 
+    private void writeBrtCellIsst(Biff12Writer w, int row, int col, int sstIndex, int styleIndex) 
             throws IOException {
         int recordSize = 8 + 4;  // cell + isst
         
         w.writeRecordHeader(Biff12RecordType.BrtCellIsst, recordSize);
-        w.writeCell(col, 0);     // cell结构
+        w.writeCell(col, styleIndex);     // cell结构
         w.writeIntLE(sstIndex);  // isst (SST index)
     }
     
@@ -307,12 +322,12 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
      * 写入BrtCellBool记录（布尔值）
      * 结构：cell(8) + value(1)
      */
-    private void writeBrtCellBool(Biff12Writer w, int row, int col, boolean value) 
+    private void writeBrtCellBool(Biff12Writer w, int row, int col, boolean value, int styleIndex) 
             throws IOException {
         int recordSize = 8 + 1;  // cell + value
         
         w.writeRecordHeader(Biff12RecordType.BrtCellBool, recordSize);
-        w.writeCell(col, 0);     // cell结构
+        w.writeCell(col, styleIndex);     // cell结构
         w.writeBytes(value ? BOOL_TRUE : BOOL_FALSE);
     }
     
@@ -320,11 +335,11 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
      * 写入BrtCellBlank记录（空单元格）
      * 结构：cell(8)
      */
-    private void writeBrtCellBlank(Biff12Writer w, int row, int col) throws IOException {
+    private void writeBrtCellBlank(Biff12Writer w, int row, int col, int styleIndex) throws IOException {
         int recordSize = 8;  // cell only
         
         w.writeRecordHeader(Biff12RecordType.BrtCellBlank, recordSize);
-        w.writeCell(col, 0);  // cell结构
+        w.writeCell(col, styleIndex);  // cell结构
     }
     
     /**
@@ -447,7 +462,7 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
                 if (cell.row == row && 
                     (cell.row < startRow || cell.row >= startRow + rowCount ||
                      cell.col < startCol || cell.col >= startCol + columnCount)) {
-                    writeCell(w, cell.row, cell.col, cell.data);
+                    writeCellWithStyle(w, cell.row, cell.col, cell.data, cell.styleIndex);
                 }
             }
             

@@ -14,6 +14,7 @@ import cn.itcraft.jxlsb.format.SheetParser;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.Objects;
@@ -38,6 +39,11 @@ public final class XlsbWriter implements AutoCloseable {
     private int fillStartRow;
     private int fillStartCol;
     private int fillRowCount;
+    
+    private List<SheetParser.CellInfo> streamingTemplateCells;
+    private int streamingTemplateMaxRow;
+    private int streamingTemplateMaxCol;
+    private List<List<Object>> streamingAccumulatedData;
     
     private XlsbWriter(Builder builder) throws IOException {
         Objects.requireNonNull(builder.path, "Output path must not be null");
@@ -275,9 +281,10 @@ public final class XlsbWriter implements AutoCloseable {
         
         SheetParser parser = new SheetParser(
             this.templateReader.getSheetStream(sheetIndex), sharedStrings);
-        parser.parse();
-        int columnCount = Math.max(parser.getMaxCol() + 1, 4);
-        sheetWriter.startStreaming(columnCount);
+        this.streamingTemplateCells = parser.parse();
+        this.streamingTemplateMaxRow = parser.getMaxRow();
+        this.streamingTemplateMaxCol = parser.getMaxCol();
+        this.streamingAccumulatedData = new ArrayList<>();
     }
     
     public void fillRows(List<?> dataList) throws IOException {
@@ -289,29 +296,16 @@ public final class XlsbWriter implements AutoCloseable {
             throw new IllegalStateException("Fill not started, call startFill() first");
         }
         
-        int batchSize = dataList.size();
-        int actualStartRow = fillStartRow + fillRowCount;
-        
-        CellDataSupplier supplier = (row, col) -> {
-            int index = row - actualStartRow;
-            if (index >= 0 && index < dataList.size()) {
-                Object rowData = dataList.get(index);
-                if (rowData instanceof List) {
-                    List<?> rowList = (List<?>) rowData;
-                    int colIndex = col - fillStartCol;
-                    if (colIndex >= 0 && colIndex < rowList.size()) {
-                        return toCellData(rowList.get(colIndex), col);
-                    }
-                } else {
-                    return toCellData(rowData, col);
-                }
+        for (Object item : dataList) {
+            if (item instanceof List) {
+                streamingAccumulatedData.add((List<Object>) item);
+            } else {
+                List<Object> row = new ArrayList<>();
+                row.add(item);
+                streamingAccumulatedData.add(row);
             }
-            return CellData.blank();
-        };
-        
-        sheetWriter.appendRows(supplier, actualStartRow, batchSize, 
-            sheetWriter.getStreamingColumnCount());
-        fillRowCount += batchSize;
+        }
+        fillRowCount = streamingAccumulatedData.size();
     }
     
     public void endFill() throws IOException {
@@ -323,14 +317,34 @@ public final class XlsbWriter implements AutoCloseable {
             throw new IllegalStateException("Fill not started");
         }
         
-        byte[] sheetData = sheetWriter.finalizeStreaming(fillRowCount, 
-            sheetWriter.getStreamingColumnCount());
+        int columnCount = Math.max(streamingTemplateMaxCol + 1 - fillStartCol, 4);
+        
+        CellDataSupplier supplier = (row, col) -> {
+            int index = row - fillStartRow;
+            if (index >= 0 && index < streamingAccumulatedData.size()) {
+                List<Object> rowList = streamingAccumulatedData.get(index);
+                int colIndex = col - fillStartCol;
+                if (colIndex >= 0 && colIndex < rowList.size()) {
+                    return toCellData(rowList.get(colIndex), col);
+                }
+            }
+            return CellData.blank();
+        };
+        
+        byte[] sheetData = sheetWriter.writeSheetWithTemplate(
+            supplier, fillRowCount, columnCount, fillStartRow, fillStartCol,
+            streamingTemplateCells, streamingTemplateMaxRow, streamingTemplateMaxCol);
+        
         container.addEntry("xl/worksheets/sheet" + (currentFillSheetIndex + 1) + ".bin", sheetData);
         
         currentFillSheetIndex = -1;
         fillStartRow = 0;
         fillStartCol = 0;
         fillRowCount = 0;
+        streamingTemplateCells = null;
+        streamingTemplateMaxRow = 0;
+        streamingTemplateMaxCol = 0;
+        streamingAccumulatedData = null;
     }
     
     private MarkerPosition findMarker(int sheetIndex, String marker) throws IOException {
