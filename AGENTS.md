@@ -16,15 +16,66 @@
 - ✅ Excel/WPS兼容性验证通过
 - ✅ 性能优异：比POI快2-3倍，文件小30-50%
 - ✅ XLSB文件读取
-- 🚧 样式扩展（合并单元格、条件格式等）
+- ✅ 模板填充（fillBatch/fillAtMarker/startFill）
+- ✅ 合并单元格（模板中合并单元格保留）
+
+## 模板填充功能
+
+### API说明
+
+```java
+// 基于模板创建Writer
+XlsbWriter writer = XlsbWriter.builder()
+    .template(Path.of("template.xlsb"))
+    .path(Path.of("output.xlsb"))
+    .build();
+
+// 固定位置填充
+writer.fillBatch(0, dataList, 12, 8);  // sheetIndex, data, startRow, startCol
+
+// 标记查找填充
+writer.fillAtMarker("${data}", dataList);  // 查找${data}位置填充
+
+// 流式填充
+writer.startFill(0, 12, 8);
+writer.fillRows(batch1);
+writer.fillRows(batch2);
+writer.endFill();
+```
+
+### 支持范围
+
+- ✅ 保留模板所有内容：styles.bin、theme、静态文本
+- ✅ 保留单元格样式：字体、边框、填充、对齐
+- ✅ 保留合并单元格（BrtMergeCell记录）
+- ✅ 标记查找填充（如`${data}`）
+- ⚠️ **仅支持表头模板**：数据从指定位置向下填充
+- ❌ **不支持尾部模板**：填充后无法保留底部静态内容
+
+### 设计限制
+
+当前模板填充设计为"表头模板"模式：
+- 模板内容（标题、字段名、合并单元格）在顶部保留
+- 填充数据从指定位置开始向下追加
+- 填充区域覆盖原有内容（包括标记单元格）
+- 填充后不保留底部模板内容
+
+**适用场景**：
+- 报表模板（标题+字段名+数据区域）
+- 统计表（表头固定，数据动态）
+- 名单导出（字段名保留，人员数据填充）
+
+**不适用场景**：
+- 头尾都有模板（如签名区在底部）
+- 多区域填充（如标题+数据+汇总）
 
 ## 性能数据
 
 **100K行 × 10列测试结果：**
-- jxlsb: 2.61 MB, 590 ms
-- FastExcel: 5.42 MB, 591 ms
-- EasyExcel: 4.18 MB, 1173 ms
-- POI: 4.16 MB, 1826 ms
+- jxlsb: 2.72 MB, 453 ms
+- FastExcel: 5.42 MB, 521 ms
+- EasyExcel: 4.21 MB, 1121 ms
+- POI: 4.16 MB, 1528 ms
 
 ## AI guide
 

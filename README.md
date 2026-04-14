@@ -37,6 +37,45 @@
 |---|---|---|---|---|
 | **writeBatch** | 计算报表、内存数据导出 | 内存已有 / 实时计算 | 无 | 函数式一次性写入 |
 | **startSheet + writeRows + endSheet** | 数据库分页查询、大文件流式处理 | DB分页 / 文件流 | 低 | 分批追加写入 |
+| **template + fillBatch/fillAtMarker** | 模板填充、报表生成 | 模板 + 数据 | 无 | 保留模板样式 |
+
+### 模板填充 API
+
+基于XLSB模板填充数据，保留模板所有内容（样式、合并单元格等）：
+
+```java
+// 创建模板填充Writer
+XlsbWriter writer = XlsbWriter.builder()
+    .template(Paths.get("template.xlsb"))  // 模板路径
+    .path(Paths.get("output.xlsb"))        // 输出路径
+    .build();
+
+// 方式1: 固定位置填充
+List<List<Object>> data = Arrays.asList(
+    Arrays.asList("张三", "北京", 25, "男"),
+    Arrays.asList("李四", "上海", 30, "女")
+);
+writer.fillBatch(0, data, 4, 2);  // sheetIndex, dataList, startRow, startCol
+
+// 方式2: 标记查找填充
+writer.fillAtMarker("${data}", data);  // 查找${data}标记位置填充
+
+// 方式3: 流式填充
+writer.startFill(0, 12, 8);
+writer.fillRows(batch1);
+writer.fillRows(batch2);
+writer.endFill();
+
+writer.close();
+```
+
+**模板支持范围**：
+- ✅ 保留模板所有内容：styles.bin、theme、静态文本等
+- ✅ 保留单元格样式：字体、边框、填充、对齐
+- ✅ 保留合并单元格
+- ✅ 支持标记查找填充（如`${data}`）
+- ⚠️ **仅支持表头模板**：数据从指定位置向下填充，不支持头尾都有模板
+- ❌ 不支持尾部模板：填充数据后无法保留底部静态内容
 
 ### 读取 API
 
@@ -187,6 +226,8 @@ CellData.time(timestamp)              // h:mm:ss
 | 流式写入 | ✅ 完整 | startSheet/writeRows/endSheet |
 | 流式读取 | ✅ 完整 | forEachRow回调 |
 | 分页读取 | ✅ 完整 | readRows批量返回 |
+| 模板填充 | ✅ 完整 | fillBatch/fillAtMarker/startFill |
+| 合并单元格 | ✅ 完整 | 模板中合并单元格保留 |
 | 公式 | ❌ 不支持 | |
 | 图表 | ❌ 不支持 | |
 | 条件格式 | ❌ 不支持 | |
@@ -199,11 +240,12 @@ CellData.time(timestamp)              // h:mm:ss
 - ✅ 数据库分页查询导出
 - ✅ 存储成本敏感（文件小50%）
 - ✅ 内存受限环境（堆外内存）
+- ✅ 模板报表生成（保留样式、合并单元格）
 
 **不推荐场景**：
 - ❌ 需要公式、图表
-- ❌ 需要复杂样式（合并单元格、条件格式）
-- ❌ 需要读取带公式的第三方XLSB
+- ❌ 需要条件格式
+- ❌ 需要头尾都有模板的报表（仅支持表头模板）
 
 ## 架构
 
