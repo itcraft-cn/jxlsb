@@ -29,26 +29,12 @@ public final class StylesWriter {
     public byte[] toBiff12Bytes() throws IOException {
         Biff12Writer w = new Biff12Writer(16 * 1024);
         
-        w.writeEmptyRecord(Biff12RecordType.BrtBeginStyleSheet);
-        
-        writeBrtBeginFmts(w);
-        writeNumberFormats(w);
-        writeBrtEndFmts(w);
-        
-        writeBrtBeginFonts(w);
-        writeFonts(w);
-        writeBrtEndFonts(w);
-        
-        writeBrtBeginFills(w);
-        writeFills(w);
-        writeBrtEndFills(w);
-        
-        writeBrtBeginBorders(w);
-        writeBorders(w);
-        writeBrtEndBorders(w);
-        
         writeBrtBeginCellStyleXFs(w);
-        writeBrtCellStyleXF(w, 0);
+        writeFormats(w);
+        writeFonts(w);
+        writeFills(w);
+        writeBorders(w);
+        writeCellStyleXFs(w);
         writeBrtEndCellStyleXFs(w);
         
         writeBrtBeginCellXFs(w);
@@ -58,105 +44,47 @@ public final class StylesWriter {
         writeBrtBeginStyles(w);
         writeBrtEndStyles(w);
         
-        w.writeEmptyRecord(Biff12RecordType.BrtEndStyleSheet);
-        
         return w.toByteArray();
     }
     
-    private void writeBrtBeginFmts(Biff12Writer w) throws IOException {
-        w.writeEmptyRecord(615);
-    }
-    
-    private void writeBrtEndFmts(Biff12Writer w) throws IOException {
-        w.writeEmptyRecord(616);
-    }
-    
-    private void writeBrtBeginFonts(Biff12Writer w) throws IOException {
-        byte[] data = new byte[4];
-        data[0] = 1;
-        data[1] = 0;
-        data[2] = 0;
-        data[3] = 0;
-        w.writeRecordHeader(611, 4);
-        w.writeBytes(data);
-    }
-    
-    private void writeBrtEndFonts(Biff12Writer w) throws IOException {
-        w.writeEmptyRecord(612);
-    }
-    
-    private void writeBrtBeginFills(Biff12Writer w) throws IOException {
-        byte[] data = new byte[4];
-        data[0] = 2;
-        data[1] = 0;
-        data[2] = 0;
-        data[3] = 0;
-        w.writeRecordHeader(603, 4);
-        w.writeBytes(data);
-    }
-    
-    private void writeBrtEndFills(Biff12Writer w) throws IOException {
-        w.writeEmptyRecord(604);
-    }
-    
-    private void writeBrtBeginBorders(Biff12Writer w) throws IOException {
-        byte[] data = new byte[4];
-        data[0] = 1;
-        data[1] = 0;
-        data[2] = 0;
-        data[3] = 0;
-        w.writeRecordHeader(613, 4);
-        w.writeBytes(data);
-    }
-    
-    private void writeBrtEndBorders(Biff12Writer w) throws IOException {
-        w.writeEmptyRecord(614);
-    }
-    
     private void writeBrtBeginCellStyleXFs(Biff12Writer w) throws IOException {
-        byte[] data = new byte[4];
-        data[0] = 1;
-        data[1] = 0;
-        data[2] = 0;
-        data[3] = 0;
-        w.writeRecordHeader(Biff12RecordType.BrtBeginCellStyleXFs, 4);
-        w.writeBytes(data);
+        w.writeEmptyRecord(278);
     }
     
     private void writeBrtEndCellStyleXFs(Biff12Writer w) throws IOException {
-        w.writeEmptyRecord(Biff12RecordType.BrtEndCellStyleXFs);
+        w.writeEmptyRecord(279);
     }
     
     private void writeBrtBeginCellXFs(Biff12Writer w) throws IOException {
         int count = styleRegistry.getStyles().size();
-        byte[] data = new byte[4];
-        data[0] = (byte)count;
-        data[1] = (byte)(count >> 8);
-        data[2] = (byte)(count >> 16);
-        data[3] = (byte)(count >> 24);
-        w.writeRecordHeader(Biff12RecordType.BrtBeginCellXFs, 4);
-        w.writeBytes(data);
+        w.writeRecordHeader(280, 4);
+        w.writeIntLE(count);
     }
     
     private void writeBrtEndCellXFs(Biff12Writer w) throws IOException {
-        w.writeEmptyRecord(Biff12RecordType.BrtEndCellXFs);
+        w.writeEmptyRecord(281);
     }
     
     private void writeBrtBeginStyles(Biff12Writer w) throws IOException {
-        byte[] data = new byte[4];
         w.writeRecordHeader(617, 4);
-        w.writeBytes(data);
+        w.writeIntLE(0);
     }
     
     private void writeBrtEndStyles(Biff12Writer w) throws IOException {
         w.writeEmptyRecord(618);
     }
     
-    private void writeNumberFormats(Biff12Writer w) throws IOException {
+    private void writeFormats(Biff12Writer w) throws IOException {
         Map<Integer, String> customFormats = styleRegistry.getFormatRegistry().getCustomFormats();
+        
+        w.writeRecordHeader(615, 4);
+        w.writeIntLE(customFormats.size());
+        
         for (Map.Entry<Integer, String> entry : customFormats.entrySet()) {
             writeBrtFmt(w, entry.getKey(), entry.getValue());
         }
+        
+        w.writeEmptyRecord(616);
     }
     
     private void writeBrtFmt(Biff12Writer w, int formatId, String formatString) throws IOException {
@@ -164,19 +92,22 @@ public final class StylesWriter {
         int strLen = formatString.length();
         int recordSize = 2 + 4 + strLen * 2;
         
-        w.writeRecordHeader(Biff12RecordType.BrtFmt, recordSize);
+        w.writeRecordHeader(44, recordSize);
         w.writeShortLE(formatId);
         w.writeIntLE(strLen);
         w.writeBytes(strBytes);
     }
     
     private void writeFonts(Biff12Writer w) throws IOException {
-        byte[] fontData = buildDefaultFont();
-        w.writeRecordHeader(Biff12RecordType.BrtFont, fontData.length);
-        w.writeBytes(fontData);
+        w.writeRecordHeader(611, 4);
+        w.writeIntLE(1);
+        
+        writeBrtFont(w);
+        
+        w.writeEmptyRecord(612);
     }
     
-    private byte[] buildDefaultFont() {
+    private void writeBrtFont(Biff12Writer w) throws IOException {
         byte[] data = new byte[134];
         data[0] = 0x0E;
         data[1] = 0x01;
@@ -187,61 +118,74 @@ public final class StylesWriter {
         data[6] = (byte)fontName.length();
         data[7] = (byte)(fontName.length() >> 8);
         System.arraycopy(nameBytes, 0, data, 8, nameBytes.length);
-        return data;
+        w.writeRecordHeader(43, data.length);
+        w.writeBytes(data);
     }
     
     private void writeFills(Biff12Writer w) throws IOException {
+        w.writeRecordHeader(603, 4);
+        w.writeIntLE(2);
+        
         writeBrtFill(w, new byte[4]);
         writeBrtFill(w, new byte[]{0x02, 0x00, (byte)0x80, 0x00});
+        
+        w.writeEmptyRecord(604);
     }
     
     private void writeBrtFill(Biff12Writer w, byte[] data) throws IOException {
-        w.writeRecordHeader(Biff12RecordType.BrtFill, data.length);
+        w.writeRecordHeader(45, data.length);
         w.writeBytes(data);
     }
     
     private void writeBorders(Biff12Writer w) throws IOException {
+        w.writeRecordHeader(613, 4);
+        w.writeIntLE(1);
+        
         byte[] data = new byte[24];
-        w.writeRecordHeader(Biff12RecordType.BrtBorder, data.length);
+        w.writeRecordHeader(46, data.length);
         w.writeBytes(data);
+        
+        w.writeEmptyRecord(614);
     }
     
-    private void writeBrtCellStyleXF(Biff12Writer w, int xfId) throws IOException {
-        byte[] data = new byte[24];
-        data[8] = (byte)xfId;
-        data[9] = (byte)(xfId >> 8);
-        w.writeRecordHeader(Biff12RecordType.BrtXF, data.length);
-        w.writeBytes(data);
+    private void writeCellStyleXFs(Biff12Writer w) throws IOException {
+        writeBrtXF(w, 0xFFFF, 0, 0, 0, 0);
     }
     
     private void writeCellXFs(Biff12Writer w) throws IOException {
         List<CellStyleFormat> styles = styleRegistry.getStyles();
         for (int i = 0; i < styles.size(); i++) {
-            writeBrtXF(w, styles.get(i), i);
+            CellStyleFormat style = styles.get(i);
+            writeBrtXF(w, style.getNumFmtId(), style.getFontId(), style.getFillId(), style.getBorderId(), 0);
         }
     }
     
-    private void writeBrtXF(Biff12Writer w, CellStyleFormat style, int xfId) throws IOException {
-        byte[] data = new byte[24];
+    private void writeBrtXF(Biff12Writer w, int numFmtId, int fontId, int fillId, int borderId, int xfId) throws IOException {
+        byte[] data = new byte[16];
         
-        data[0] = (byte)style.getNumFmtId();
-        data[1] = (byte)(style.getNumFmtId() >> 8);
+        data[0] = (byte)(numFmtId & 0xFF);
+        data[1] = (byte)((numFmtId >> 8) & 0xFF);
         
-        data[2] = (byte)style.getFontId();
-        data[3] = (byte)(style.getFontId() >> 8);
+        data[2] = (byte)(fontId & 0xFF);
+        data[3] = (byte)((fontId >> 8) & 0xFF);
         
-        data[4] = (byte)style.getFillId();
-        data[5] = (byte)(style.getFillId() >> 8);
+        data[4] = (byte)(fillId & 0xFF);
+        data[5] = (byte)((fillId >> 8) & 0xFF);
         
-        data[6] = (byte)style.getBorderId();
-        data[7] = (byte)(style.getBorderId() >> 8);
+        data[6] = (byte)(borderId & 0xFF);
+        data[7] = (byte)((borderId >> 8) & 0xFF);
         
-        data[8] = (byte)xfId;
-        data[9] = (byte)(xfId >> 8);
-        data[10] = (byte)(xfId >> 16);
-        data[11] = (byte)(xfId >> 24);
+        data[8] = (byte)(xfId & 0xFF);
+        data[9] = (byte)((xfId >> 8) & 0xFF);
+        data[10] = (byte)((xfId >> 16) & 0xFF);
+        data[11] = (byte)((xfId >> 24) & 0xFF);
         
-        w.writeRecordHeader(Biff12RecordType.BrtXF, data.length);
+        data[12] = 0x08;
+        data[13] = 0x10;
+        data[14] = 0x00;
+        data[15] = 0x00;
+        
+        w.writeRecordHeader(47, data.length);
         w.writeBytes(data);
     }
     
