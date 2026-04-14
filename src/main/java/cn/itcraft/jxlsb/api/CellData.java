@@ -92,6 +92,28 @@ public final class CellData {
     public int getStyleIndex() { return styleIndex; }
     public boolean hasFormatCode() { return formatCode != null; }
     
+    public boolean isText() { return type == CellType.TEXT; }
+    public boolean isNumber() { return type == CellType.NUMBER; }
+    public boolean isBlank() { return type == CellType.BLANK; }
+    public boolean isBoolean() { return type == CellType.BOOLEAN; }
+    public boolean isDate() { return type == CellType.DATE; }
+    
+    public String getTextValue() { 
+        return type == CellType.TEXT ? (String) value : null; 
+    }
+    
+    public Double getNumberValue() {
+        return type == CellType.NUMBER ? (Double) value : null;
+    }
+    
+    public Boolean getBooleanValue() {
+        return type == CellType.BOOLEAN ? (Boolean) value : null;
+    }
+    
+    public Long getDateValue() {
+        return type == CellType.DATE ? (Long) value : null;
+    }
+    
     private static String repeat(String s, int count) {
         StringBuilder sb = new StringBuilder(s.length() * count);
         for (int i = 0; i < count; i++) sb.append(s);

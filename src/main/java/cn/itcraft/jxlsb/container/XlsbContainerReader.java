@@ -87,4 +87,52 @@ public final class XlsbContainerReader implements AutoCloseable {
     public void close() throws IOException {
         zipFile.close();
     }
+    
+    public Set<String> getAllEntryNames() {
+        return entries.keySet();
+    }
+    
+    public InputStream getEntryStream(String name) throws IOException {
+        ZipEntry entry = entries.get(name);
+        if (entry == null) {
+            return null;
+        }
+        return zipFile.getInputStream(entry);
+    }
+    
+    public byte[] getEntryBytes(String name) throws IOException {
+        ZipEntry entry = entries.get(name);
+        if (entry == null) {
+            return null;
+        }
+        InputStream in = zipFile.getInputStream(entry);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int len;
+        while ((len = in.read(buffer)) != -1) {
+            out.write(buffer, 0, len);
+        }
+        in.close();
+        return out.toByteArray();
+    }
+    
+    public InputStream getStylesStream() throws IOException {
+        return getEntryStream("xl/styles.bin");
+    }
+    
+    public InputStream getThemeStream() throws IOException {
+        return getEntryStream("xl/theme/theme1.xml");
+    }
+    
+    public InputStream getDrawingStream(int drawingIndex) throws IOException {
+        return getEntryStream("xl/drawings/drawing" + (drawingIndex + 1) + ".xml");
+    }
+    
+    public boolean hasStyles() {
+        return entries.containsKey("xl/styles.bin");
+    }
+    
+    public boolean hasTheme() {
+        return entries.containsKey("xl/theme/theme1.xml");
+    }
 }

@@ -418,4 +418,14 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
         w.writeRecordHeader(Biff12RecordType.BrtPageSetup, psData.length);
         w.writeBytes(psData);
     }
+    
+    public int getStreamingColumnCount() {
+        return streamingColumnCount;
+    }
+    
+    public byte[] writeSheetWithTemplate(CellDataSupplier supplier, int rowCount, int columnCount,
+                                          int startRow, int startCol, TemplateSheetReader templateReader) 
+            throws IOException {
+        return writeSheet(supplier, rowCount, columnCount);
+    }
 }
