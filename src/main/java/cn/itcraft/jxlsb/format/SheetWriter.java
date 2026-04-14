@@ -453,30 +453,49 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
         Biff12Writer w = new Biff12Writer(estimatedSize);
         
         writeSheetHeader(w, totalRows, totalCols);
-        
         w.writeEmptyRecord(Biff12RecordType.BrtBeginSheetData);
         
         for (int row = 0; row < totalRows; row++) {
             writeBrtRowHdr(w, row, totalCols);
-            
-            for (SheetParser.CellInfo cell : templateCells) {
-                if (cell.row == row && 
-                    (cell.row < startRow || cell.row >= startRow + rowCount ||
-                     cell.col < startCol || cell.col >= startCol + columnCount)) {
-                    writeCellWithStyle(w, cell.row, cell.col, cell.data, cell.styleIndex);
-                }
+            writeTemplateCellsForRow(w, row, templateCells, startRow, rowCount, startCol, columnCount);
+            writeFillCellsForRow(w, row, supplier, startRow, rowCount, startCol, columnCount);
+        }
+        
+        writeSheetFooterWithMerge(w, mergeCells);
+        
+        return w.toByteArray();
+    }
+    
+    private void writeTemplateCellsForRow(Biff12Writer w, int row, 
+                                          List<SheetParser.CellInfo> templateCells,
+                                          int startRow, int rowCount, int startCol, int columnCount) 
+            throws IOException {
+        for (SheetParser.CellInfo cell : templateCells) {
+            if (cell.row == row && isOutsideFillArea(cell.row, cell.col, startRow, rowCount, startCol, columnCount)) {
+                writeCellWithStyle(w, cell.row, cell.col, cell.data, cell.styleIndex);
             }
-            
-            if (row >= startRow && row < startRow + rowCount) {
-                for (int col = startCol; col < startCol + columnCount; col++) {
-                    CellData data = supplier.get(row, col);
-                    if (data != null && data.getType() != null && data.getType() != CellType.BLANK) {
-                        writeCell(w, row, col, data);
-                    }
+        }
+    }
+    
+    private void writeFillCellsForRow(Biff12Writer w, int row, CellDataSupplier supplier,
+                                       int startRow, int rowCount, int startCol, int columnCount) 
+            throws IOException {
+        if (row >= startRow && row < startRow + rowCount) {
+            for (int col = startCol; col < startCol + columnCount; col++) {
+                CellData data = supplier.get(row, col);
+                if (data != null && data.getType() != null && data.getType() != CellType.BLANK) {
+                    writeCell(w, row, col, data);
                 }
             }
         }
-        
+    }
+    
+    private boolean isOutsideFillArea(int cellRow, int cellCol, int startRow, int rowCount, int startCol, int columnCount) {
+        return cellRow < startRow || cellRow >= startRow + rowCount ||
+               cellCol < startCol || cellCol >= startCol + columnCount;
+    }
+    
+    private void writeSheetFooterWithMerge(Biff12Writer w, List<SheetParser.MergeCell> mergeCells) throws IOException {
         w.writeEmptyRecord(Biff12RecordType.BrtEndSheetData);
         
         if (mergeCells != null && !mergeCells.isEmpty()) {
@@ -484,10 +503,7 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
         }
         
         writePageSetupRecords(w);
-        
         w.writeEmptyRecord(Biff12RecordType.BrtEndSheet);
-        
-        return w.toByteArray();
     }
     
     private void writeMergeCells(Biff12Writer w, List<SheetParser.MergeCell> mergeCells) throws IOException {
