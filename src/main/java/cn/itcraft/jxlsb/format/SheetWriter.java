@@ -3,7 +3,9 @@ package cn.itcraft.jxlsb.format;
 import cn.itcraft.jxlsb.api.CellData;
 import cn.itcraft.jxlsb.api.CellDataSupplier;
 import cn.itcraft.jxlsb.data.CellType;
+import cn.itcraft.jxlsb.format.SheetParser;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Worksheet.bin写入器
@@ -424,8 +426,43 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
     }
     
     public byte[] writeSheetWithTemplate(CellDataSupplier supplier, int rowCount, int columnCount,
-                                          int startRow, int startCol, TemplateSheetReader templateReader) 
+                                          int startRow, int startCol, 
+                                          List<SheetParser.CellInfo> templateCells,
+                                          int templateMaxRow, int templateMaxCol) 
             throws IOException {
-        return writeSheet(supplier, rowCount, columnCount);
+        int totalRows = Math.max(templateMaxRow + 1, startRow + rowCount);
+        int totalCols = Math.max(templateMaxCol + 1, startCol + columnCount);
+        
+        int estimatedSize = totalRows * totalCols * 30 + 1024;
+        Biff12Writer w = new Biff12Writer(estimatedSize);
+        
+        writeSheetHeader(w, totalRows, totalCols);
+        
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginSheetData);
+        
+        for (int row = 0; row < totalRows; row++) {
+            writeBrtRowHdr(w, row, totalCols);
+            
+            for (SheetParser.CellInfo cell : templateCells) {
+                if (cell.row == row && 
+                    (cell.row < startRow || cell.row >= startRow + rowCount ||
+                     cell.col < startCol || cell.col >= startCol + columnCount)) {
+                    writeCell(w, cell.row, cell.col, cell.data);
+                }
+            }
+            
+            if (row >= startRow && row < startRow + rowCount) {
+                for (int col = startCol; col < startCol + columnCount; col++) {
+                    CellData data = supplier.get(row, col);
+                    if (data != null && data.getType() != null && data.getType() != CellType.BLANK) {
+                        writeCell(w, row, col, data);
+                    }
+                }
+            }
+        }
+        
+        writeSheetFooter(w);
+        
+        return w.toByteArray();
     }
 }

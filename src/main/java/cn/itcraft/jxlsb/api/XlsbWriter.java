@@ -10,7 +10,7 @@ import cn.itcraft.jxlsb.format.WorkbookWriter;
 import cn.itcraft.jxlsb.format.SheetWriter;
 import cn.itcraft.jxlsb.format.StylesWriter;
 import cn.itcraft.jxlsb.format.SheetReader;
-import cn.itcraft.jxlsb.format.TemplateSheetReader;
+import cn.itcraft.jxlsb.format.SheetParser;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.io.InputStream;
@@ -79,7 +79,8 @@ public final class XlsbWriter implements AutoCloseable {
         Set<String> entries = templateReader.getAllEntryNames();
         
         for (String name : entries) {
-            if (name.startsWith("xl/worksheets/")) {
+            if (name.startsWith("xl/worksheets/") || 
+                name.equals("xl/sharedStrings.bin")) {
                 continue;
             }
             
@@ -198,21 +199,34 @@ public final class XlsbWriter implements AutoCloseable {
             throw new IllegalArgumentException("Invalid sheet index: " + sheetIndex);
         }
         
-        TemplateSheetReader templateReader = new TemplateSheetReader(
-            this.templateReader.getSheetStream(sheetIndex), sharedStrings);
-        int columnCount = templateReader.getColumnCount();
+        SheetParser parser = new SheetParser(templateReader.getSheetStream(sheetIndex), sharedStrings);
+        List<cn.itcraft.jxlsb.format.SheetParser.CellInfo> templateCells = parser.parse();
+        
+        int templateMaxRow = parser.getMaxRow();
+        int templateMaxCol = parser.getMaxCol();
+        
+        int columnCount = Math.max(templateMaxCol + 1, 4);
         
         CellDataSupplier supplier = (row, col) -> {
             int index = row - startRow;
             if (index >= 0 && index < dataList.size()) {
-                Object obj = dataList.get(index);
-                return toCellData(obj, col);
+                Object rowData = dataList.get(index);
+                if (rowData instanceof List) {
+                    List<?> rowList = (List<?>) rowData;
+                    int colIndex = col - startCol;
+                    if (colIndex >= 0 && colIndex < rowList.size()) {
+                        return toCellData(rowList.get(colIndex), col);
+                    }
+                } else {
+                    return toCellData(rowData, col);
+                }
             }
             return CellData.blank();
         };
         
         byte[] sheetData = sheetWriter.writeSheetWithTemplate(
-            supplier, dataList.size(), columnCount, startRow, startCol, templateReader);
+            supplier, dataList.size(), columnCount, startRow, startCol, 
+            templateCells, templateMaxRow, templateMaxCol);
         
         container.addEntry("xl/worksheets/sheet" + (sheetIndex + 1) + ".bin", sheetData);
     }
@@ -259,9 +273,10 @@ public final class XlsbWriter implements AutoCloseable {
         this.fillStartCol = startCol;
         this.fillRowCount = 0;
         
-        TemplateSheetReader templateReader = new TemplateSheetReader(
+        SheetParser parser = new SheetParser(
             this.templateReader.getSheetStream(sheetIndex), sharedStrings);
-        int columnCount = templateReader.getColumnCount();
+        parser.parse();
+        int columnCount = Math.max(parser.getMaxCol() + 1, 4);
         sheetWriter.startStreaming(columnCount);
     }
     
@@ -280,8 +295,16 @@ public final class XlsbWriter implements AutoCloseable {
         CellDataSupplier supplier = (row, col) -> {
             int index = row - actualStartRow;
             if (index >= 0 && index < dataList.size()) {
-                Object obj = dataList.get(index);
-                return toCellData(obj, col);
+                Object rowData = dataList.get(index);
+                if (rowData instanceof List) {
+                    List<?> rowList = (List<?>) rowData;
+                    int colIndex = col - fillStartCol;
+                    if (colIndex >= 0 && colIndex < rowList.size()) {
+                        return toCellData(rowList.get(colIndex), col);
+                    }
+                } else {
+                    return toCellData(rowData, col);
+                }
             }
             return CellData.blank();
         };
@@ -399,7 +422,9 @@ public final class XlsbWriter implements AutoCloseable {
     
     @Override
     public void close() throws IOException {
-        if (!isTemplateMode && sheetCount > 0) {
+        if (isTemplateMode) {
+            updateSharedStrings();
+        } else if (sheetCount > 0) {
             writeContainerStructure();
         }
         
@@ -408,6 +433,13 @@ public final class XlsbWriter implements AutoCloseable {
         }
         
         container.close();
+    }
+    
+    private void updateSharedStrings() throws IOException {
+        if (sharedStrings.getCount() > 0) {
+            byte[] sstData = sharedStrings.toBiff12Bytes();
+            container.addEntry("xl/sharedStrings.bin", sstData);
+        }
     }
     
     private void writeContainerStructure() throws IOException {
