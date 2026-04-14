@@ -75,5 +75,19 @@ public final class Biff12RecordType {
     public static final int BrtBeginMergeCells = 177;
     public static final int BrtEndMergeCells = 178;
     
+    // Styles
+    public static final int BrtBeginFmts = 615;
+    public static final int BrtEndFmts = 616;
+    public static final int BrtBeginFonts = 611;
+    public static final int BrtEndFonts = 612;
+    public static final int BrtBeginFills = 603;
+    public static final int BrtEndFills = 604;
+    public static final int BrtBeginBorders = 613;
+    public static final int BrtEndBorders = 614;
+    public static final int BrtBeginXFs = 626;
+    public static final int BrtEndXFs = 627;
+    public static final int BrtBeginStyles = 617;
+    public static final int BrtEndStyles = 618;
+    
     private Biff12RecordType() {}
 }

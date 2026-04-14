@@ -48,18 +48,18 @@ public final class SheetReader implements AutoCloseable {
         }
         
         if (offset + 4 > buffer.length) return;
-        currentRow = readIntLE(buffer, offset);
+        currentRow = VarIntReader.readIntLE(buffer, offset);
         currentHandler = handler;
         
         int numSpans = 0;
         if (offset + 17 <= buffer.length) {
-            numSpans = readIntLE(buffer, offset + 13);
+            numSpans = VarIntReader.readIntLE(buffer, offset + 13);
         }
         
         int lastCol = 0;
         if (numSpans > 0 && offset + 17 + numSpans * 8 <= buffer.length) {
             int lastSpanOffset = offset + 17 + (numSpans - 1) * 8;
-            lastCol = readIntLE(buffer, lastSpanOffset + 4);
+            lastCol = VarIntReader.readIntLE(buffer, lastSpanOffset + 4);
         }
         
         int columnCount = Math.max(1, lastCol + 1);
@@ -67,37 +67,37 @@ public final class SheetReader implements AutoCloseable {
     }
     
     private void handleBrtCellRk(byte[] buffer, int offset, int size, RowHandler handler) {
-        int col = readIntLE(buffer, offset);
-        int rkValue = readIntLE(buffer, offset + 8);
+        int col = VarIntReader.readIntLE(buffer, offset);
+        int rkValue = VarIntReader.readIntLE(buffer, offset + 8);
         
         double value = decodeRk(rkValue);
         handler.onCellNumber(currentRow, col, value);
     }
     
     private void handleBrtCellReal(byte[] buffer, int offset, int size, RowHandler handler) {
-        int col = readIntLE(buffer, offset);
-        double value = readDoubleLE(buffer, offset + 8);
+        int col = VarIntReader.readIntLE(buffer, offset);
+        double value = VarIntReader.readDoubleLE(buffer, offset + 8);
         
         handler.onCellNumber(currentRow, col, value);
     }
     
     private void handleBrtCellSt(byte[] buffer, int offset, int size, RowHandler handler) {
-        int col = readIntLE(buffer, offset);
-        int sstIndex = readIntLE(buffer, offset + 8);
+        int col = VarIntReader.readIntLE(buffer, offset);
+        int sstIndex = VarIntReader.readIntLE(buffer, offset + 8);
         
         String value = sst.getString(sstIndex);
         handler.onCellText(currentRow, col, value);
     }
     
     private void handleBrtCellBool(byte[] buffer, int offset, int size, RowHandler handler) {
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         boolean value = buffer[offset + 8] != 0;
         
         handler.onCellBoolean(currentRow, col, value);
     }
     
     private void handleBrtCellBlank(byte[] buffer, int offset, int size, RowHandler handler) {
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         
         handler.onCellBlank(currentRow, col);
     }
@@ -105,8 +105,8 @@ public final class SheetReader implements AutoCloseable {
     private void handleBrtCellIsst(byte[] buffer, int offset, int size, RowHandler handler) {
         if (offset + 12 > buffer.length) return;
         
-        int col = readIntLE(buffer, offset);
-        int sstIndex = readIntLE(buffer, offset + 8);
+        int col = VarIntReader.readIntLE(buffer, offset);
+        int sstIndex = VarIntReader.readIntLE(buffer, offset + 8);
         
         String value = sst.getString(sstIndex);
         handler.onCellText(currentRow, col, value != null ? value : "");
@@ -243,7 +243,7 @@ public final class SheetReader implements AutoCloseable {
             return "";
         }
         
-        int length = readIntLE(buffer, offset);
+        int length = VarIntReader.readIntLE(buffer, offset);
         if (length == 0) {
             return "";
         }
@@ -257,34 +257,6 @@ public final class SheetReader implements AutoCloseable {
         System.arraycopy(buffer, offset + 4, strBytes, 0, strBytesLength);
         
         return new String(strBytes, StandardCharsets.UTF_16LE);
-    }
-    
-    private int readIntLE(byte[] buffer, int offset) {
-        if (offset + 4 > buffer.length) {
-            return 0;
-        }
-        
-        return (buffer[offset] & 0xFF) | 
-               ((buffer[offset + 1] & 0xFF) << 8) |
-               ((buffer[offset + 2] & 0xFF) << 16) |
-               ((buffer[offset + 3] & 0xFF) << 24);
-    }
-    
-    private double readDoubleLE(byte[] buffer, int offset) {
-        if (offset + 8 > buffer.length) {
-            return 0.0;
-        }
-        
-        long bits = ((long)buffer[offset] & 0xFF) |
-                    (((long)buffer[offset + 1] & 0xFF) << 8) |
-                    (((long)buffer[offset + 2] & 0xFF) << 16) |
-                    (((long)buffer[offset + 3] & 0xFF) << 24) |
-                    (((long)buffer[offset + 4] & 0xFF) << 32) |
-                    (((long)buffer[offset + 5] & 0xFF) << 40) |
-                    (((long)buffer[offset + 6] & 0xFF) << 48) |
-                    (((long)buffer[offset + 7] & 0xFF) << 56);
-        
-        return Double.longBitsToDouble(bits);
     }
     
     @Override

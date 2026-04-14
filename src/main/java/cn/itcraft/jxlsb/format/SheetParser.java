@@ -116,7 +116,7 @@ public final class SheetParser implements AutoCloseable {
             try {
                 switch (recordType) {
                     case Biff12RecordType.BrtRowHdr:
-                        currentRow = readIntLE(buffer, pos);
+                        currentRow = VarIntReader.readIntLE(buffer, pos);
                         maxRow = Math.max(maxRow, currentRow);
                         break;
                     
@@ -141,7 +141,7 @@ public final class SheetParser implements AutoCloseable {
                         break;
                     
                     case Biff12RecordType.BrtCellBlank:
-                        int col = readIntLE(buffer, pos);
+                        int col = VarIntReader.readIntLE(buffer, pos);
                         maxCol = Math.max(maxCol, col);
                         break;
                     
@@ -162,9 +162,9 @@ public final class SheetParser implements AutoCloseable {
     }
     
     private void handleCellIsst(byte[] buffer, int offset, int size, int row) {
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         int styleIndex = readStyleIndex(buffer, offset);
-        int sstIdx = readIntLE(buffer, offset + 8);
+        int sstIdx = VarIntReader.readIntLE(buffer, offset + 8);
         String text = sst.getString(sstIdx);
         if (text != null) {
             cells.add(new CellInfo(row, col, CellData.text(text), styleIndex));
@@ -173,9 +173,9 @@ public final class SheetParser implements AutoCloseable {
     }
     
     private void handleCellSt(byte[] buffer, int offset, int size, int row) {
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         int styleIndex = readStyleIndex(buffer, offset);
-        int sstIdx = readIntLE(buffer, offset + 8);
+        int sstIdx = VarIntReader.readIntLE(buffer, offset + 8);
         String text = sst.getString(sstIdx);
         if (text != null) {
             cells.add(new CellInfo(row, col, CellData.text(text), styleIndex));
@@ -184,24 +184,24 @@ public final class SheetParser implements AutoCloseable {
     }
     
     private void handleCellReal(byte[] buffer, int offset, int size, int row) {
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         int styleIndex = readStyleIndex(buffer, offset);
-        double value = readDoubleLE(buffer, offset + 8);
+        double value = VarIntReader.readDoubleLE(buffer, offset + 8);
         cells.add(new CellInfo(row, col, CellData.number(value), styleIndex));
         maxCol = Math.max(maxCol, col);
     }
     
     private void handleCellRk(byte[] buffer, int offset, int size, int row) {
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         int styleIndex = readStyleIndex(buffer, offset);
-        int rkValue = readIntLE(buffer, offset + 8);
+        int rkValue = VarIntReader.readIntLE(buffer, offset + 8);
         double value = decodeRk(rkValue);
         cells.add(new CellInfo(row, col, CellData.number(value), styleIndex));
         maxCol = Math.max(maxCol, col);
     }
     
     private void handleCellBool(byte[] buffer, int offset, int size, int row) {
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         int styleIndex = readStyleIndex(buffer, offset);
         boolean value = buffer[offset + 8] != 0;
         cells.add(new CellInfo(row, col, CellData.bool(value), styleIndex));
@@ -209,10 +209,10 @@ public final class SheetParser implements AutoCloseable {
     }
     
     private void handleMergeCell(byte[] buffer, int offset, int size) {
-        int rowFirst = readIntLE(buffer, offset);
-        int rowLast = readIntLE(buffer, offset + 4);
-        int colFirst = readIntLE(buffer, offset + 8);
-        int colLast = readIntLE(buffer, offset + 12);
+        int rowFirst = VarIntReader.readIntLE(buffer, offset);
+        int rowLast = VarIntReader.readIntLE(buffer, offset + 4);
+        int colFirst = VarIntReader.readIntLE(buffer, offset + 8);
+        int colLast = VarIntReader.readIntLE(buffer, offset + 12);
         mergeCells.add(new MergeCell(rowFirst, rowLast, colFirst, colLast));
         maxRow = Math.max(maxRow, rowLast);
         maxCol = Math.max(maxCol, colLast);
@@ -244,26 +244,5 @@ public final class SheetParser implements AutoCloseable {
         }
         
         return value;
-    }
-    
-    private int readIntLE(byte[] buffer, int offset) {
-        if (offset + 4 > buffer.length) return 0;
-        return (buffer[offset] & 0xFF) | 
-               ((buffer[offset + 1] & 0xFF) << 8) |
-               ((buffer[offset + 2] & 0xFF) << 16) |
-               ((buffer[offset + 3] & 0xFF) << 24);
-    }
-    
-    private double readDoubleLE(byte[] buffer, int offset) {
-        if (offset + 8 > buffer.length) return 0.0;
-        long bits = ((long)buffer[offset] & 0xFF) |
-                    (((long)buffer[offset + 1] & 0xFF) << 8) |
-                    (((long)buffer[offset + 2] & 0xFF) << 16) |
-                    (((long)buffer[offset + 3] & 0xFF) << 24) |
-                    (((long)buffer[offset + 4] & 0xFF) << 32) |
-                    (((long)buffer[offset + 5] & 0xFF) << 40) |
-                    (((long)buffer[offset + 6] & 0xFF) << 48) |
-                    (((long)buffer[offset + 7] & 0xFF) << 56);
-        return Double.longBitsToDouble(bits);
     }
 }

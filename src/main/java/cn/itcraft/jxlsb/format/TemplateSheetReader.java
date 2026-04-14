@@ -104,24 +104,13 @@ public final class TemplateSheetReader {
     
     private void handleBrtRowHdr(byte[] buffer, int offset, int size) {
         if (offset + 4 > buffer.length) return;
-        int row = readIntLE(buffer, offset);
+        int row = VarIntReader.readIntLE(buffer, offset);
         maxRow = Math.max(maxRow, row);
     }
     
     private void handleCell(byte[] buffer, int offset, int size) {
         if (offset + 4 > buffer.length) return;
-        int col = readIntLE(buffer, offset);
+        int col = VarIntReader.readIntLE(buffer, offset);
         maxColumn = Math.max(maxColumn, col);
-    }
-    
-    private int readIntLE(byte[] buffer, int offset) {
-        if (offset + 4 > buffer.length) {
-            return 0;
-        }
-        
-        return (buffer[offset] & 0xFF) | 
-               ((buffer[offset + 1] & 0xFF) << 8) |
-               ((buffer[offset + 2] & 0xFF) << 16) |
-               ((buffer[offset + 3] & 0xFF) << 24);
     }
 }

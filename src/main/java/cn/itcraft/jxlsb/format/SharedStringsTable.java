@@ -103,7 +103,7 @@ public final class SharedStringsTable {
         int flags = buffer[offset];
         int strOffset = offset + 1;
         
-        int length = readIntLE(buffer, strOffset);
+        int length = VarIntReader.readIntLE(buffer, strOffset);
         if (length == 0) {
             return "";
         }
@@ -114,17 +114,6 @@ public final class SharedStringsTable {
         return new String(strBytes, StandardCharsets.UTF_16LE);
     }
     
-    private int readIntLE(byte[] buffer, int offset) {
-        return (buffer[offset] & 0xFF) | 
-               ((buffer[offset + 1] & 0xFF) << 8) |
-               ((buffer[offset + 2] & 0xFF) << 16) |
-               ((buffer[offset + 3] & 0xFF) << 24);
-    }
-    
-    /**
-     * 生成sharedStrings.bin内容
-     * 记录序列：BrtBeginSst -> BrtSSTItem* -> BrtEndSst
-     */
     public byte[] toBiff12Bytes() throws IOException {
         Biff12Writer w = new Biff12Writer();
         

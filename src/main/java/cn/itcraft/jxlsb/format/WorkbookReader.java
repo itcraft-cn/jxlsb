@@ -1,15 +1,12 @@
 package cn.itcraft.jxlsb.format;
 
 import cn.itcraft.jxlsb.container.SheetInfo;
+import cn.itcraft.jxlsb.format.VarIntReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Workbook读取器
- * 读取xl/workbook.bin获取Sheet列表
- */
 public final class WorkbookReader implements AutoCloseable {
     
     private final InputStream inputStream;
@@ -73,14 +70,11 @@ public final class WorkbookReader implements AutoCloseable {
     }
     
     private SheetInfo parseBrtBundleSh(byte[] buffer, int offset, int size) {
-        // BrtBundleSh结构：
-        // hsState (4 bytes) + iTabId (4 bytes) + strRelID (XLWideString) + strName (XLWideString)
-        
         int pos = offset;
-        int hsState = readIntLE(buffer, pos);
+        int hsState = VarIntReader.readIntLE(buffer, pos);
         pos += 4;
         
-        int iTabId = readIntLE(buffer, pos);
+        int iTabId = VarIntReader.readIntLE(buffer, pos);
         pos += 4;
         
         String relId = readXLWideString(buffer, pos);
@@ -92,19 +86,12 @@ public final class WorkbookReader implements AutoCloseable {
     }
     
     private String readXLWideString(byte[] buffer, int offset) {
-        int length = readIntLE(buffer, offset);
+        int length = VarIntReader.readIntLE(buffer, offset);
         if (length == 0) return "";
         
         byte[] bytes = new byte[length * 2];
         System.arraycopy(buffer, offset + 4, bytes, 0, bytes.length);
         return new String(bytes, java.nio.charset.StandardCharsets.UTF_16LE);
-    }
-    
-    private int readIntLE(byte[] buffer, int offset) {
-        return (buffer[offset] & 0xFF) |
-               ((buffer[offset + 1] & 0xFF) << 8) |
-               ((buffer[offset + 2] & 0xFF) << 16) |
-               ((buffer[offset + 3] & 0xFF) << 24);
     }
     
     @Override
