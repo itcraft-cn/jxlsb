@@ -43,6 +43,7 @@ public final class XlsbWriter implements AutoCloseable {
     private List<SheetParser.CellInfo> streamingTemplateCells;
     private int streamingTemplateMaxRow;
     private int streamingTemplateMaxCol;
+    private List<SheetParser.MergeCell> streamingMergeCells;
     private List<List<Object>> streamingAccumulatedData;
     
     private XlsbWriter(Builder builder) throws IOException {
@@ -210,6 +211,7 @@ public final class XlsbWriter implements AutoCloseable {
         
         int templateMaxRow = parser.getMaxRow();
         int templateMaxCol = parser.getMaxCol();
+        List<cn.itcraft.jxlsb.format.SheetParser.MergeCell> mergeCells = parser.getMergeCells();
         
         int columnCount = Math.max(templateMaxCol + 1, 4);
         
@@ -232,7 +234,7 @@ public final class XlsbWriter implements AutoCloseable {
         
         byte[] sheetData = sheetWriter.writeSheetWithTemplate(
             supplier, dataList.size(), columnCount, startRow, startCol, 
-            templateCells, templateMaxRow, templateMaxCol);
+            templateCells, templateMaxRow, templateMaxCol, mergeCells);
         
         container.addEntry("xl/worksheets/sheet" + (sheetIndex + 1) + ".bin", sheetData);
     }
@@ -284,6 +286,7 @@ public final class XlsbWriter implements AutoCloseable {
         this.streamingTemplateCells = parser.parse();
         this.streamingTemplateMaxRow = parser.getMaxRow();
         this.streamingTemplateMaxCol = parser.getMaxCol();
+        this.streamingMergeCells = parser.getMergeCells();
         this.streamingAccumulatedData = new ArrayList<>();
     }
     
@@ -333,7 +336,8 @@ public final class XlsbWriter implements AutoCloseable {
         
         byte[] sheetData = sheetWriter.writeSheetWithTemplate(
             supplier, fillRowCount, columnCount, fillStartRow, fillStartCol,
-            streamingTemplateCells, streamingTemplateMaxRow, streamingTemplateMaxCol);
+            streamingTemplateCells, streamingTemplateMaxRow, streamingTemplateMaxCol,
+            streamingMergeCells);
         
         container.addEntry("xl/worksheets/sheet" + (currentFillSheetIndex + 1) + ".bin", sheetData);
         
@@ -344,6 +348,7 @@ public final class XlsbWriter implements AutoCloseable {
         streamingTemplateCells = null;
         streamingTemplateMaxRow = 0;
         streamingTemplateMaxCol = 0;
+        streamingMergeCells = null;
         streamingAccumulatedData = null;
     }
     

@@ -443,7 +443,8 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
     public byte[] writeSheetWithTemplate(CellDataSupplier supplier, int rowCount, int columnCount,
                                           int startRow, int startCol, 
                                           List<SheetParser.CellInfo> templateCells,
-                                          int templateMaxRow, int templateMaxCol) 
+                                          int templateMaxRow, int templateMaxCol,
+                                          List<SheetParser.MergeCell> mergeCells) 
             throws IOException {
         int totalRows = Math.max(templateMaxRow + 1, startRow + rowCount);
         int totalCols = Math.max(templateMaxCol + 1, startCol + columnCount);
@@ -476,8 +477,31 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
             }
         }
         
-        writeSheetFooter(w);
+        w.writeEmptyRecord(Biff12RecordType.BrtEndSheetData);
+        
+        if (mergeCells != null && !mergeCells.isEmpty()) {
+            writeMergeCells(w, mergeCells);
+        }
+        
+        writePageSetupRecords(w);
+        
+        w.writeEmptyRecord(Biff12RecordType.BrtEndSheet);
         
         return w.toByteArray();
+    }
+    
+    private void writeMergeCells(Biff12Writer w, List<SheetParser.MergeCell> mergeCells) throws IOException {
+        w.writeRecordHeader(Biff12RecordType.BrtBeginMergeCells, 4);
+        w.writeIntLE(mergeCells.size());
+        
+        for (SheetParser.MergeCell mc : mergeCells) {
+            w.writeRecordHeader(Biff12RecordType.BrtMergeCell, 16);
+            w.writeIntLE(mc.rowFirst);
+            w.writeIntLE(mc.rowLast);
+            w.writeIntLE(mc.colFirst);
+            w.writeIntLE(mc.colLast);
+        }
+        
+        w.writeEmptyRecord(Biff12RecordType.BrtEndMergeCells);
     }
 }

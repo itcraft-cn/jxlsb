@@ -70,5 +70,10 @@ public final class Biff12RecordType {
     public static final int BrtBeginCellXFs = 280;
     public static final int BrtEndCellXFs = 281;
     
+    // Merge cells
+    public static final int BrtMergeCell = 176;
+    public static final int BrtBeginMergeCells = 177;
+    public static final int BrtEndMergeCells = 178;
+    
     private Biff12RecordType() {}
 }

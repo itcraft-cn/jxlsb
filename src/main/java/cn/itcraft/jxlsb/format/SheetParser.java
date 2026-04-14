@@ -13,6 +13,7 @@ public final class SheetParser {
     private final InputStream inputStream;
     private final SharedStringsTable sst;
     private final List<CellInfo> cells = new ArrayList<>();
+    private final List<MergeCell> mergeCells = new ArrayList<>();
     private int maxRow = -1;
     private int maxCol = -1;
     
@@ -27,6 +28,24 @@ public final class SheetParser {
             this.col = col;
             this.data = data;
             this.styleIndex = styleIndex;
+        }
+    }
+    
+    public static final class MergeCell {
+        public final int rowFirst;
+        public final int rowLast;
+        public final int colFirst;
+        public final int colLast;
+        
+        MergeCell(int rowFirst, int rowLast, int colFirst, int colLast) {
+            this.rowFirst = rowFirst;
+            this.rowLast = rowLast;
+            this.colFirst = colFirst;
+            this.colLast = colLast;
+        }
+        
+        public boolean contains(int row, int col) {
+            return row >= rowFirst && row <= rowLast && col >= colFirst && col <= colLast;
         }
     }
     
@@ -61,6 +80,7 @@ public final class SheetParser {
     
     public int getMaxRow() { return maxRow; }
     public int getMaxCol() { return maxCol; }
+    public List<MergeCell> getMergeCells() { return mergeCells; }
     
     private int processBuffer(byte[] buffer, int length, int currentRow) {
         int pos = 0;
@@ -115,6 +135,10 @@ public final class SheetParser {
                     case Biff12RecordType.BrtCellBlank:
                         int col = readIntLE(buffer, pos);
                         maxCol = Math.max(maxCol, col);
+                        break;
+                    
+                    case Biff12RecordType.BrtMergeCell:
+                        handleMergeCell(buffer, pos, recordSize);
                         break;
                 }
                 
@@ -172,6 +196,16 @@ public final class SheetParser {
         boolean value = buffer[offset + 8] != 0;
         cells.add(new CellInfo(row, col, CellData.bool(value), styleIndex));
         maxCol = Math.max(maxCol, col);
+    }
+    
+    private void handleMergeCell(byte[] buffer, int offset, int size) {
+        int rowFirst = readIntLE(buffer, offset);
+        int rowLast = readIntLE(buffer, offset + 4);
+        int colFirst = readIntLE(buffer, offset + 8);
+        int colLast = readIntLE(buffer, offset + 12);
+        mergeCells.add(new MergeCell(rowFirst, rowLast, colFirst, colLast));
+        maxRow = Math.max(maxRow, rowLast);
+        maxCol = Math.max(maxCol, colLast);
     }
     
     private int readStyleIndex(byte[] buffer, int offset) {
