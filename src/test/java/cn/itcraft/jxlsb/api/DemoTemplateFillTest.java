@@ -36,14 +36,14 @@ class DemoTemplateFillTest {
                 System.out.println("  Sheet: " + info.getName());
             }
             
-            // C5 = row=4, col=2 (从0开始的API坐标)
-            System.out.println("\n填充位置: C5 (row=4, col=2)");
+            // I13 = row=12, col=8 (从0开始的API坐标)
+            System.out.println("\n填充位置: I13 (row=12, col=8)");
             System.out.println("填充数据:");
             for (List<Object> row : dataList) {
                 System.out.println("  " + row);
             }
             
-            writer.fillBatch(0, dataList, 4, 2);
+            writer.fillBatch(0, dataList, 12, 8);
         }
         
         System.out.println("\n输出文件: " + outputPath + " (" + Files.size(outputPath) + " bytes)");
@@ -93,8 +93,8 @@ class DemoTemplateFillTest {
                 .path(outputPath)
                 .build()) {
             
-            // C5 = row=4, col=2
-            writer.startFill(0, 4, 2);
+            // I13 = row=12, col=8 (从0开始的API坐标)
+            writer.startFill(0, 12, 8);
             
             writer.fillRows(Arrays.asList(Arrays.asList("孙八", "成都", 40, "男")));
             writer.fillRows(Arrays.asList(Arrays.asList("周九", "武汉", 33, "女")));
