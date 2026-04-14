@@ -159,7 +159,7 @@ public final class StylesWriter {
     }
     
     private void writeBrtXF(Biff12Writer w, CellStyleFormat style, int xfId) throws IOException {
-        byte[] data = new byte[20];
+        byte[] data = new byte[24];
         
         data[0] = (byte)style.getNumFmtId();
         data[1] = (byte)(style.getNumFmtId() >> 8);
@@ -172,6 +172,11 @@ public final class StylesWriter {
         
         data[6] = (byte)style.getBorderId();
         data[7] = (byte)(style.getBorderId() >> 8);
+        
+        data[8] = (byte)xfId;
+        data[9] = (byte)(xfId >> 8);
+        data[10] = (byte)(xfId >> 16);
+        data[11] = (byte)(xfId >> 24);
         
         w.writeRecordHeader(Biff12RecordType.BrtXF, data.length);
         w.writeBytes(data);
