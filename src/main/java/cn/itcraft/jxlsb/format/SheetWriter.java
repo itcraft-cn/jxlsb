@@ -188,10 +188,11 @@ public final class SheetWriter {
         switch (data.getType()) {
             case NUMBER:
                 double num = (Double) data.getValue();
+                int numStyleId = getStyleIdForFormat(data);
                 if (num == Math.floor(num) && num >= MIN_RK_INTEGER && num <= MAX_RK_INTEGER) {
-                    writeBrtCellRk(w, row, col, (int) num);
+                    writeBrtCellRk(w, row, col, (int) num, numStyleId);
                 } else {
-                    writeBrtCellReal(w, row, col, num);
+                    writeBrtCellReal(w, row, col, num, numStyleId);
                 }
                 break;
             case TEXT:
@@ -201,7 +202,8 @@ public final class SheetWriter {
             case DATE:
                 long timestamp = (Long) data.getValue();
                 double excelDate = toExcelDate(timestamp);
-                writeBrtCellReal(w, row, col, excelDate);
+                int dateStyleId = getDateStyleIdForFormat(data);
+                writeBrtCellReal(w, row, col, excelDate, dateStyleId);
                 break;
             case BOOLEAN:
                 writeBrtCellBool(w, row, col, (Boolean) data.getValue());
@@ -212,6 +214,29 @@ public final class SheetWriter {
             default:
                 throw new IllegalArgumentException("Unknown cell type: " + data.getType());
         }
+    }
+    
+    private int getStyleIdForFormat(CellData data) {
+        if (!data.hasFormatCode()) {
+            return 0;
+        }
+        String formatCode = data.getFormatCode();
+        return addFormatAndGetStyleId(formatCode);
+    }
+    
+    private int getDateStyleIdForFormat(CellData data) {
+        if (!data.hasFormatCode()) {
+            return defaultDateStyleId;
+        }
+        String formatCode = data.getFormatCode();
+        return addFormatAndGetStyleId(formatCode);
+    }
+    
+    private int addFormatAndGetStyleId(String formatCode) {
+        if (stylesWriter == null) {
+            return 0;
+        }
+        return stylesWriter.addDateFormat(formatCode);
     }
     
     /**
@@ -228,17 +253,26 @@ public final class SheetWriter {
      * 结构：cell(8) + rk(4)
      * RK 编码：使用 IEEE 754 double 的高 32 位
      */
-    private void writeBrtCellRk(Biff12Writer w, int row, int col, int value) 
+private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int styleIndex) 
             throws IOException {
         int recordSize = 8 + 4;  // cell + rk
         
         w.writeRecordHeader(Biff12RecordType.BrtCellRk, recordSize);
-        w.writeCell(col, 0);     // cell结构
+        w.writeCell(col, styleIndex);     // cell结构
         
         // RK 编码：取 IEEE 754 double 的高 32 位
         long bits = Double.doubleToLongBits((double)value);
         int rk = (int)(bits >> 32);
         w.writeIntLE(rk);
+    }
+    
+    private void writeBrtCellReal(Biff12Writer w, int row, int col, double value, int styleIndex) 
+            throws IOException {
+        int recordSize = 8 + 8;  // cell + xnum
+        
+        w.writeRecordHeader(Biff12RecordType.BrtCellReal, recordSize);
+        w.writeCell(col, styleIndex);     // cell结构
+        w.writeDoubleLE(value);  // xnum
     }
     
     /**
