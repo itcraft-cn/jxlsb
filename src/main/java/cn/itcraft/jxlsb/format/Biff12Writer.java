@@ -72,12 +72,19 @@ public final class Biff12Writer {
      * 写入小端序int（使用实例buffer优化）
      */
     public void writeIntLE(int value) throws IOException {
-        // 使用实例级别buffer，避免循环内创建2M+次数组
         intBuffer[0] = (byte)(value & 0xFF);
         intBuffer[1] = (byte)((value >> 8) & 0xFF);
         intBuffer[2] = (byte)((value >> 16) & 0xFF);
         intBuffer[3] = (byte)((value >> 24) & 0xFF);
         baos.write(intBuffer);
+    }
+    
+    /**
+     * 写入小端序short
+     */
+    public void writeShortLE(int value) throws IOException {
+        baos.write(value & 0xFF);
+        baos.write((value >> 8) & 0xFF);
     }
     
     /**
