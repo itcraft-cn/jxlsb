@@ -79,16 +79,17 @@ public final class StylesWriter {
     }
     
     private void writeBrtFont(Biff12Writer w) throws IOException {
-        byte[] data = new byte[134];
-        data[0] = 0x0E;
-        data[1] = 0x01;
-        data[4] = (byte)(11 * 20);
-        data[5] = (byte)((11 * 20) >> 8);
-        String fontName = "Calibri";
-        byte[] nameBytes = fontName.getBytes(StandardCharsets.UTF_16LE);
-        data[6] = (byte)fontName.length();
-        data[7] = (byte)(fontName.length() >> 8);
-        System.arraycopy(nameBytes, 0, data, 8, nameBytes.length);
+        byte[] data = {
+            (byte)0xdc, 0x00, 0x00, 0x00,
+            (byte)0x90, 0x01, 0x00, 0x00,
+            0x00, 0x00,
+            (byte)0x86, 0x00,
+            0x07, 0x01,
+            0x00, 0x00, 0x00, 0x00, 0x00,
+            (byte)0xff,
+            0x02, 0x02, 0x00, 0x00, 0x00,
+            (byte)0x8b, (byte)0x5b, (byte)0x53, (byte)0x4f
+        };
         w.writeRecordHeader(43, data.length);
         w.writeBytes(data);
     }
