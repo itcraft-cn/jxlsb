@@ -9,16 +9,29 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.StandardCopyOption;
 
 class DemoTemplateFillTest {
     
+    private Path getTemplatePath() throws IOException {
+        InputStream is = getClass().getClassLoader().getResourceAsStream("template/demo_template.xlsb");
+        if (is == null) {
+            throw new IOException("Template not found: template/demo_template.xlsb");
+        }
+        Path tempTemplate = Files.createTempFile("demo_template_", ".xlsb");
+        Files.copy(is, tempTemplate, StandardCopyOption.REPLACE_EXISTING);
+        is.close();
+        return tempTemplate;
+    }
+    
     @Test
     void fillWithFixedPosition() throws IOException {
-        Path templatePath = Path.of("/tmp/demo_template.xlsb");
+        Path templatePath = getTemplatePath();
         Path outputPath = Path.of("/tmp/demo_output_fixed.xlsb");
         
         System.out.println("=== 固定位置填充测试 ===");
-        System.out.println("模板: " + templatePath);
+        System.out.println("模板: src/test/resources/template/demo_template.xlsb");
         
         List<List<Object>> dataList = new ArrayList<>();
         dataList.add(Arrays.asList("张三", "北京", 25, "男"));
@@ -36,7 +49,6 @@ class DemoTemplateFillTest {
                 System.out.println("  Sheet: " + info.getName());
             }
             
-            // I13 = row=12, col=8 (从0开始的API坐标)
             System.out.println("\n填充位置: I13 (row=12, col=8)");
             System.out.println("填充数据:");
             for (List<Object> row : dataList) {
@@ -46,17 +58,18 @@ class DemoTemplateFillTest {
             writer.fillBatch(0, dataList, 12, 8);
         }
         
+        Files.delete(templatePath);
         System.out.println("\n输出文件: " + outputPath + " (" + Files.size(outputPath) + " bytes)");
         System.out.println("请用WPS打开验证！");
     }
     
     @Test
     void fillWithMarker() throws IOException {
-        Path templatePath = Path.of("/tmp/demo_template.xlsb");
+        Path templatePath = getTemplatePath();
         Path outputPath = Path.of("/tmp/demo_output_marker.xlsb");
         
         System.out.println("=== 标记查找填充测试 ===");
-        System.out.println("模板: " + templatePath);
+        System.out.println("模板: src/test/resources/template/demo_template.xlsb");
         
         List<List<Object>> dataList = new ArrayList<>();
         dataList.add(Arrays.asList("赵六", "深圳", 35, "男"));
@@ -76,24 +89,24 @@ class DemoTemplateFillTest {
             writer.fillAtMarker("${data}", dataList);
         }
         
+        Files.delete(templatePath);
         System.out.println("\n输出文件: " + outputPath + " (" + Files.size(outputPath) + " bytes)");
         System.out.println("请用WPS打开验证！");
     }
     
     @Test
     void streamingFill() throws IOException {
-        Path templatePath = Path.of("/tmp/demo_template.xlsb");
+        Path templatePath = getTemplatePath();
         Path outputPath = Path.of("/tmp/demo_output_streaming.xlsb");
         
         System.out.println("=== 流式填充测试 ===");
-        System.out.println("模板: " + templatePath);
+        System.out.println("模板: src/test/resources/template/demo_template.xlsb");
         
         try (XlsbWriter writer = XlsbWriter.builder()
                 .template(templatePath)
                 .path(outputPath)
                 .build()) {
             
-            // I13 = row=12, col=8 (从0开始的API坐标)
             writer.startFill(0, 12, 8);
             
             writer.fillRows(Arrays.asList(Arrays.asList("孙八", "成都", 40, "男")));
@@ -103,6 +116,7 @@ class DemoTemplateFillTest {
             writer.endFill();
         }
         
+        Files.delete(templatePath);
         System.out.println("\n输出文件: " + outputPath + " (" + Files.size(outputPath) + " bytes)");
         System.out.println("请用WPS打开验证！");
     }

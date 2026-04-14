@@ -8,42 +8,29 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.StandardCopyOption;
 
 class TemplateFillTest {
     
-    @Test
-    void createTemplate() throws IOException {
-        Path templatePath = Path.of("/tmp/template.xlsb");
-        
-        System.out.println("=== 创建模板文件 ===");
-        
-        try (XlsbWriter writer = XlsbWriter.builder().path(templatePath).build()) {
-            writer.writeBatch("Template", (row, col) -> {
-                if (row == 0) {
-                    switch (col) {
-                        case 0: return CellData.text("ID");
-                        case 1: return CellData.text("Name");
-                        case 2: return CellData.text("Amount");
-                        case 3: return CellData.text("${data}");
-                        default: return CellData.blank();
-                    }
-                }
-                return CellData.blank();
-            }, 1, 4);
+    private Path getTemplatePath() throws IOException {
+        InputStream is = getClass().getClassLoader().getResourceAsStream("template/demo_template.xlsb");
+        if (is == null) {
+            throw new IOException("Template not found: template/demo_template.xlsb");
         }
-        
-        System.out.println("模板文件: " + templatePath + " (" + Files.size(templatePath) + " bytes)");
-        System.out.println("模板结构: Sheet1, 4列, 包含标记 ${data} 在(0,3)");
+        Path tempTemplate = Files.createTempFile("demo_template_", ".xlsb");
+        Files.copy(is, tempTemplate, StandardCopyOption.REPLACE_EXISTING);
+        is.close();
+        return tempTemplate;
     }
     
     @Test
     void fillTemplateWithFixedPosition() throws IOException {
-        Path templatePath = Path.of("/tmp/template.xlsb");
+        Path templatePath = getTemplatePath();
         Path outputPath = Path.of("/tmp/output_fixed.xlsb");
         
-        createTemplate();
-        
-        System.out.println("\n=== 固定位置填充测试 ===");
+        System.out.println("=== 固定位置填充测试 ===");
+        System.out.println("模板: src/test/resources/template/demo_template.xlsb");
         
         List<Object> data = Arrays.asList(
             Arrays.asList(1, "Alice", 100.5),
@@ -62,21 +49,21 @@ class TemplateFillTest {
                 System.out.println("  Sheet: " + info.getName());
             }
             
-            writer.fillBatch(0, data, 1, 0);
+            writer.fillBatch(0, data, 12, 8);
         }
         
+        Files.delete(templatePath);
         System.out.println("输出文件: " + outputPath + " (" + Files.size(outputPath) + " bytes)");
-        System.out.println("填充位置: row=1, col=0 (从标题下一行开始)");
+        System.out.println("填充位置: row=12, col=8 (I13位置)");
     }
     
     @Test
     void fillTemplateWithMarker() throws IOException {
-        Path templatePath = Path.of("/tmp/template.xlsb");
+        Path templatePath = getTemplatePath();
         Path outputPath = Path.of("/tmp/output_marker.xlsb");
         
-        createTemplate();
-        
         System.out.println("\n=== 标记查找填充测试 ===");
+        System.out.println("模板: src/test/resources/template/demo_template.xlsb");
         
         List<Object> data = Arrays.asList(
             Arrays.asList(10, "David", 150.0),
@@ -91,25 +78,25 @@ class TemplateFillTest {
             writer.fillAtMarker("${data}", data);
         }
         
+        Files.delete(templatePath);
         System.out.println("输出文件: " + outputPath + " (" + Files.size(outputPath) + " bytes)");
         System.out.println("标记位置: 查找到 ${data} 并从此处填充");
     }
     
     @Test
     void streamingFillTest() throws IOException {
-        Path templatePath = Path.of("/tmp/template.xlsb");
+        Path templatePath = getTemplatePath();
         Path outputPath = Path.of("/tmp/output_streaming.xlsb");
         
-        createTemplate();
-        
         System.out.println("\n=== 流式填充测试 ===");
+        System.out.println("模板: src/test/resources/template/demo_template.xlsb");
         
         try (XlsbWriter writer = XlsbWriter.builder()
                 .template(templatePath)
                 .path(outputPath)
                 .build()) {
             
-            writer.startFill(0, 1, 0);
+            writer.startFill(0, 12, 8);
             
             writer.fillRows(Arrays.asList(Arrays.asList(100, "Batch1-A", 1000)));
             writer.fillRows(Arrays.asList(Arrays.asList(200, "Batch1-B", 2000)));
@@ -118,6 +105,7 @@ class TemplateFillTest {
             writer.endFill();
         }
         
+        Files.delete(templatePath);
         System.out.println("输出文件: " + outputPath + " (" + Files.size(outputPath) + " bytes)");
         System.out.println("流式填充: 3批次数据");
     }
