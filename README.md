@@ -164,6 +164,13 @@ CellData.number(3.14159)     // 数字
 CellData.date(timestamp)     // 日期（毫秒时间戳）
 CellData.bool(true)          // 布尔
 CellData.blank()             // 空白
+
+// 数字格式（支持百分比、千分位、负红、货币等）
+CellData.percentage(0.1234)           // 0.00%
+CellData.numberWithComma(1234567.89)  // #,##0.00
+CellData.numberNegativeRed(-1234.56)  // #,##0.00;[Red]-#,##0.00
+CellData.currency(1234.56)            // ￥#,##0.00
+CellData.time(timestamp)              // h:mm:ss
 ```
 
 ## 功能状态
