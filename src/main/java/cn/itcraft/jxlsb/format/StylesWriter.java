@@ -39,10 +39,17 @@ public final class StylesWriter {
     
     /**
      * 生成styles.bin内容
-     * BIFF12结构: BrtBeginStyleSheet -> BrtFmt -> BrtFont -> BrtFill -> BrtBorder -> BrtXF -> BrtEndStyleSheet
+     * MS-XLSB完整结构:
+     * BrtBeginStyleSheet
+     * BrtFmt (格式定义)
+     * BrtFont (字体)
+     * BrtFill (填充)
+     * BrtBorder (边框)
+     * BrtBeginCellStyleXFs + BrtCellStyleXF(默认) + BrtEndCellStyleXFs
+     * BrtBeginCellXFs + BrtXF(单元格XF) + BrtEndCellXFs
+     * BrtEndStyleSheet
      */
     public byte[] toBiff12Bytes() throws IOException {
-        // styles.bin通常7-8KB，设置16KB缓冲区
         Biff12Writer w = new Biff12Writer(16 * 1024);
         
         w.writeEmptyRecord(Biff12RecordType.BrtBeginStyleSheet);
@@ -51,11 +58,39 @@ public final class StylesWriter {
         writeFonts(w);
         writeFills(w);
         writeBorders(w);
-        writeCellFormats(w);
+        
+        writeCellStyleXFs(w);
+        
+        writeCellXFs(w);
         
         w.writeEmptyRecord(Biff12RecordType.BrtEndStyleSheet);
         
         return w.toByteArray();
+    }
+    
+    private void writeCellStyleXFs(Biff12Writer w) throws IOException {
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginCellStyleXFs);
+        
+        CellStyleFormat defaultStyle = CellStyleFormat.builder()
+            .numFmtId(0)
+            .fontId(0)
+            .fillId(0)
+            .borderId(0)
+            .build();
+        writeBrtXF(w, defaultStyle, 0);
+        
+        w.writeEmptyRecord(Biff12RecordType.BrtEndCellStyleXFs);
+    }
+    
+    private void writeCellXFs(Biff12Writer w) throws IOException {
+        w.writeEmptyRecord(Biff12RecordType.BrtBeginCellXFs);
+        
+        List<CellStyleFormat> styles = styleRegistry.getStyles();
+        for (int i = 0; i < styles.size(); i++) {
+            writeBrtXF(w, styles.get(i), i);
+        }
+        
+        w.writeEmptyRecord(Biff12RecordType.BrtEndCellXFs);
     }
     
     private void writeNumberFormats(Biff12Writer w) throws IOException {
@@ -121,15 +156,6 @@ public final class StylesWriter {
         byte[] data = new byte[24];
         w.writeRecordHeader(Biff12RecordType.BrtBorder, data.length);
         w.writeBytes(data);
-    }
-    
-    private void writeCellFormats(Biff12Writer w) throws IOException {
-        List<CellStyleFormat> styles = styleRegistry.getStyles();
-        
-        for (int i = 0; i < styles.size(); i++) {
-            CellStyleFormat style = styles.get(i);
-            writeBrtXF(w, style, i);
-        }
     }
     
     private void writeBrtXF(Biff12Writer w, CellStyleFormat style, int xfId) throws IOException {

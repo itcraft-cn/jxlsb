@@ -29,6 +29,7 @@ public final class XlsbWriter implements AutoCloseable {
     private final XlsbContainer container;
     private final SharedStringsTable sharedStrings;
     private final WorkbookWriter workbookWriter;
+    private final StylesWriter stylesWriter;
     private final SheetWriter sheetWriter;
     private int sheetCount = 0;
     
@@ -41,8 +42,9 @@ public final class XlsbWriter implements AutoCloseable {
         Objects.requireNonNull(builder.path, "Path must not be null");
         this.container = XlsbContainer.create(builder.path);
         this.sharedStrings = new SharedStringsTable();
+        this.stylesWriter = new StylesWriter();
         this.workbookWriter = new WorkbookWriter();
-        this.sheetWriter = new SheetWriter(sharedStrings);
+        this.sheetWriter = new SheetWriter(sharedStrings, stylesWriter);
     }
     
     /**
@@ -209,7 +211,6 @@ public final class XlsbWriter implements AutoCloseable {
         container.addEntry("xl/workbook.bin", workbookWriter.toBiff12Bytes());
         
         // xl/styles.bin (required)
-        StylesWriter stylesWriter = new StylesWriter();
         container.addEntry("xl/styles.bin", stylesWriter.toBiff12Bytes());
         
         // xl/theme/theme1.xml

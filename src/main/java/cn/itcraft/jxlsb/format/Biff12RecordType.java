@@ -65,6 +65,10 @@ public final class Biff12RecordType {
     public static final int BrtXF = 47;
     public static final int BrtBeginStyleSheet = 370;
     public static final int BrtEndStyleSheet = 371;
+    public static final int BrtBeginCellStyleXFs = 278;
+    public static final int BrtEndCellStyleXFs = 279;
+    public static final int BrtBeginCellXFs = 280;
+    public static final int BrtEndCellXFs = 281;
     
     private Biff12RecordType() {}
 }
