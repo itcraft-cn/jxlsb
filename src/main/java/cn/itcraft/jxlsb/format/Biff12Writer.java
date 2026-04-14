@@ -118,13 +118,14 @@ public final class Biff12Writer {
     
     /**
      * 写入Cell结构（8字节）
-     * 格式：column(4) + iStyleRef(3字节,24位) + flags(1字节)
+     * 格式：column(4) + iStyleRef(3字节,小端序低24位) + flags(1字节)
      */
     public void writeCell(int column, int styleIndex) throws IOException {
         writeIntLE(column);
-        // iStyleRef (24 bits) + fPhShow (1 bit) + reserved (7 bits) = 4 bytes
-        int styleAndFlags = (styleIndex & 0xFFFFFF) << 8;  // style在高位24位
-        writeIntLE(styleAndFlags);
+        baos.write(styleIndex & 0xFF);
+        baos.write((styleIndex >> 8) & 0xFF);
+        baos.write((styleIndex >> 16) & 0xFF);
+        baos.write(0);
     }
     
     /**
