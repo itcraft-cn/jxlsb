@@ -207,36 +207,40 @@ public final class XlsbWriter implements AutoCloseable {
         }
         
         SheetParser parser = new SheetParser(templateReader.getSheetStream(sheetIndex), sharedStrings);
-        List<cn.itcraft.jxlsb.format.SheetParser.CellInfo> templateCells = parser.parse();
-        
-        int templateMaxRow = parser.getMaxRow();
-        int templateMaxCol = parser.getMaxCol();
-        List<cn.itcraft.jxlsb.format.SheetParser.MergeCell> mergeCells = parser.getMergeCells();
-        
-        int columnCount = Math.max(templateMaxCol + 1, 4);
-        
-        CellDataSupplier supplier = (row, col) -> {
-            int index = row - startRow;
-            if (index >= 0 && index < dataList.size()) {
-                Object rowData = dataList.get(index);
-                if (rowData instanceof List) {
-                    List<?> rowList = (List<?>) rowData;
-                    int colIndex = col - startCol;
-                    if (colIndex >= 0 && colIndex < rowList.size()) {
-                        return toCellData(rowList.get(colIndex), col);
+        try {
+            List<cn.itcraft.jxlsb.format.SheetParser.CellInfo> templateCells = parser.parse();
+            
+            int templateMaxRow = parser.getMaxRow();
+            int templateMaxCol = parser.getMaxCol();
+            List<cn.itcraft.jxlsb.format.SheetParser.MergeCell> mergeCells = parser.getMergeCells();
+            
+            int columnCount = Math.max(templateMaxCol + 1, 4);
+            
+            CellDataSupplier supplier = (row, col) -> {
+                int index = row - startRow;
+                if (index >= 0 && index < dataList.size()) {
+                    Object rowData = dataList.get(index);
+                    if (rowData instanceof List) {
+                        List<?> rowList = (List<?>) rowData;
+                        int colIndex = col - startCol;
+                        if (colIndex >= 0 && colIndex < rowList.size()) {
+                            return toCellData(rowList.get(colIndex), col);
+                        }
+                    } else {
+                        return toCellData(rowData, col);
                     }
-                } else {
-                    return toCellData(rowData, col);
                 }
-            }
-            return CellData.blank();
-        };
-        
-        byte[] sheetData = sheetWriter.writeSheetWithTemplate(
-            supplier, dataList.size(), columnCount, startRow, startCol, 
-            templateCells, templateMaxRow, templateMaxCol, mergeCells);
-        
-        container.addEntry("xl/worksheets/sheet" + (sheetIndex + 1) + ".bin", sheetData);
+                return CellData.blank();
+            };
+            
+            byte[] sheetData = sheetWriter.writeSheetWithTemplate(
+                supplier, dataList.size(), columnCount, startRow, startCol, 
+                templateCells, templateMaxRow, templateMaxCol, mergeCells);
+            
+            container.addEntry("xl/worksheets/sheet" + (sheetIndex + 1) + ".bin", sheetData);
+        } finally {
+            parser.close();
+        }
     }
     
     public void fillBatch(List<?> dataList, int startRow, int startCol) throws IOException {
@@ -283,10 +287,14 @@ public final class XlsbWriter implements AutoCloseable {
         
         SheetParser parser = new SheetParser(
             this.templateReader.getSheetStream(sheetIndex), sharedStrings);
-        this.streamingTemplateCells = parser.parse();
-        this.streamingTemplateMaxRow = parser.getMaxRow();
-        this.streamingTemplateMaxCol = parser.getMaxCol();
-        this.streamingMergeCells = parser.getMergeCells();
+        try {
+            this.streamingTemplateCells = parser.parse();
+            this.streamingTemplateMaxRow = parser.getMaxRow();
+            this.streamingTemplateMaxCol = parser.getMaxCol();
+            this.streamingMergeCells = parser.getMergeCells();
+        } finally {
+            parser.close();
+        }
         this.streamingAccumulatedData = new ArrayList<>();
     }
     

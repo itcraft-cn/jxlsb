@@ -65,14 +65,14 @@ public final class MemoryPool implements AutoCloseable {
     @Override
     public void close() {
         pool.forEach((size, queue) -> {
-            queue.forEach(block -> {
+            MemoryBlock block;
+            while ((block = queue.poll()) != null) {
                 try {
                     allocator.deallocate(block);
                 } catch (Exception e) {
                     log.warn("Failed to deallocate memory block of size {}", size, e);
                 }
-            });
-            queue.clear();
+            }
         });
         pool.clear();
         totalPooledSize.set(0);

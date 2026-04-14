@@ -3,12 +3,16 @@ package cn.itcraft.jxlsb.format;
 import cn.itcraft.jxlsb.api.CellData;
 import cn.itcraft.jxlsb.format.VarIntReader;
 import cn.itcraft.jxlsb.data.CellType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SheetParser {
+public final class SheetParser implements AutoCloseable {
+    
+    private static final Logger log = LoggerFactory.getLogger(SheetParser.class);
     
     private final InputStream inputStream;
     private final SharedStringsTable sst;
@@ -74,8 +78,12 @@ public final class SheetParser {
             }
         }
         
-        inputStream.close();
         return cells;
+    }
+    
+    @Override
+    public void close() throws IOException {
+        inputStream.close();
     }
     
     public int getMaxRow() { return maxRow; }
@@ -144,6 +152,8 @@ public final class SheetParser {
                 
                 pos += recordSize;
             } catch (Exception e) {
+                log.warn("Failed to process record type {} at position {}: {}", 
+                         recordType, pos, e.getMessage());
                 pos += recordSize;
             }
         }

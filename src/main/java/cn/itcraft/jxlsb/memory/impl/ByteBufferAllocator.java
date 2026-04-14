@@ -29,6 +29,11 @@ public final class ByteBufferAllocator implements OffHeapAllocator {
             throw new MemoryAllocationException(size, "Size must be positive");
         }
         
+        if (size > Integer.MAX_VALUE) {
+            throw new MemoryAllocationException(size, 
+                "Size exceeds maximum ByteBuffer capacity (2GB). Use chunked allocation for larger sizes.");
+        }
+        
         try {
             ByteBuffer buffer = ByteBuffer.allocateDirect((int) size);
             buffer.order(ByteOrder.LITTLE_ENDIAN);

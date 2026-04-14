@@ -1,27 +1,16 @@
 package cn.itcraft.jxlsb.container;
 
 import cn.itcraft.jxlsb.format.WorkbookReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.zip.*;
 
-/**
- * XLSB ZIP容器读取器
- * 
- * <p>解析XLSB文件（ZIP格式），提供各组件流的访问。
- * 
- * <p>XLSB文件结构：
- * <ul>
- *   <li>xl/workbook.bin - Workbook定义</li>
- *   <li>xl/worksheets/sheet*.bin - Sheet数据</li>
- *   <li>xl/sharedStrings.bin - SST字符串表</li>
- * </ul>
- * 
- * @author AI架构师
- * @since 1.0.0
- */
 public final class XlsbContainerReader implements AutoCloseable {
+    
+    private static final Logger log = LoggerFactory.getLogger(XlsbContainerReader.class);
     
     private final ZipFile zipFile;
     private final Map<String, ZipEntry> entries;
@@ -69,12 +58,11 @@ public final class XlsbContainerReader implements AutoCloseable {
         WorkbookReader reader = new WorkbookReader(getWorkbookStream());
         try {
             return reader.parseSheetList();
-        } catch (Exception e) {
-            throw new IOException("Failed to parse workbook", e);
         } finally {
             try {
                 reader.close();
-            } catch (Exception ex) {
+            } catch (IOException e) {
+                log.warn("Failed to close workbook reader: {}", e.getMessage());
             }
         }
     }
@@ -105,15 +93,15 @@ public final class XlsbContainerReader implements AutoCloseable {
         if (entry == null) {
             return null;
         }
-        InputStream in = zipFile.getInputStream(entry);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int len;
-        while ((len = in.read(buffer)) != -1) {
-            out.write(buffer, 0, len);
+        try (InputStream in = zipFile.getInputStream(entry)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = in.read(buffer)) != -1) {
+                out.write(buffer, 0, len);
+            }
+            return out.toByteArray();
         }
-        in.close();
-        return out.toByteArray();
     }
     
     public InputStream getStylesStream() throws IOException {

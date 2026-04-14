@@ -37,11 +37,28 @@ public final class XlsbContainer implements AutoCloseable {
     
     @Override
     public void close() throws IOException {
+        IOException primaryException = null;
         try {
             zipOut.finish();
-        } finally {
+        } catch (IOException e) {
+            primaryException = e;
+        }
+        try {
             zipOut.close();
+        } catch (IOException e) {
+            if (primaryException == null) {
+                primaryException = e;
+            }
+        }
+        try {
             fileOut.close();
+        } catch (IOException e) {
+            if (primaryException == null) {
+                primaryException = e;
+            }
+        }
+        if (primaryException != null) {
+            throw primaryException;
         }
     }
 }

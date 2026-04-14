@@ -1,6 +1,7 @@
 package cn.itcraft.jxlsb.format;
 
 import cn.itcraft.jxlsb.container.SheetInfo;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,7 @@ public final class WorkbookReader implements AutoCloseable {
         this.inputStream = inputStream;
     }
     
-    public List<SheetInfo> parseSheetList() throws Exception {
+    public List<SheetInfo> parseSheetList() throws IOException {
         List<SheetInfo> sheets = new ArrayList<>();
         byte[] buffer = new byte[8192];
         int bytesRead;
@@ -107,7 +108,7 @@ public final class WorkbookReader implements AutoCloseable {
     }
     
     @Override
-    public void close() throws Exception {
+    public void close() throws IOException {
         inputStream.close();
     }
 }
