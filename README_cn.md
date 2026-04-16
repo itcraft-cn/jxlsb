@@ -11,6 +11,8 @@
 - **高性能**：比POI快3x，比EasyExcel快2.5x，文件小35-50%
 - **企业级**：Java 8+支持，Multi-Release JAR（Java 23+自动使用Foreign Memory API）
 
+> **企业级功能**（加密、水印）详见 [商业版对比](docs/opensource-vs-commercial.md)
+
 ## 性能数据
 
 **100K行 × 10列：**
