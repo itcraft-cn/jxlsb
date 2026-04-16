@@ -11,6 +11,8 @@ A pure Java XLSB (Excel Binary Workbook) format reader/writer library.
 - **High Performance**: 3x faster than POI, 2.5x faster than EasyExcel, 35-50% smaller files
 - **Enterprise Ready**: Java 8+ support, Multi-Release JAR (Java 23+ auto-switches to Foreign Memory API)
 
+> **Enterprise features** (encryption, watermark) available in [Commercial Edition](docs/opensource-vs-commercial.md)
+
 ## Performance Data
 
 **100K rows × 10 columns:**
