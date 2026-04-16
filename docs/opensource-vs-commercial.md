@@ -141,7 +141,7 @@ byte[] encrypted = encryptor.encryptPackage(Files.readAllBytes(tempPath));
 ### 商业版
 
 - 官网: https://itcraft.cn/jxlsb-commercial
-- 联系: support@itcraft.cn
+- 联系: hellyguo#foxmail.com
 - 提供专属License文件
 
 ## 分支管理
