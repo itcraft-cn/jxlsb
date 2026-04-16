@@ -24,7 +24,7 @@
         <plugin.publish>0.7.0</plugin.publish>
         <plugin.spotbugs>4.8.0</plugin.spotbugs>
         <plugin.pmd>3.21.0</plugin.pmd>
-        <plugin.helper>3.6.0</plugin.helper>
+        <plugin.resources>3.3.1</plugin.resources>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.9</slf4j.version>
         <junit.version>5.10.0</junit.version>
@@ -108,7 +108,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>${plugin.resources}</version>
                 <executions>
                     <execution>
                         <id>copy-resources-jdk23</id>
