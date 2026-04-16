@@ -1,66 +1,68 @@
+**English** | [中文](README_cn.md)
+
 # jxlsb - Java XLSB Library
 
-纯Java实现的XLSB（Excel Binary Workbook）格式读写库。
+A pure Java XLSB (Excel Binary Workbook) format reader/writer library.
 
-## 特性
+## Features
 
-- **零依赖**：仅依赖SLF4J，无需POI等重型库
-- **堆外内存**：全量堆外内存架构，零GC压力
-- **高性能**：比POI快3x，比EasyExcel快2.5x，文件小35-50%
-- **企业级**：Java 8+支持，Multi-Release JAR（Java 23+自动使用Foreign Memory API）
+- **Zero Dependencies**: Only SLF4J, no heavy libraries like POI
+- **Off-Heap Memory**: Full off-heap architecture, zero GC pressure
+- **High Performance**: 3x faster than POI, 2.5x faster than EasyExcel, 35-50% smaller files
+- **Enterprise Ready**: Java 8+ support, Multi-Release JAR (Java 23+ auto-switches to Foreign Memory API)
 
-## 性能数据
+## Performance Data
 
-**100K行 × 10列：**
+**100K rows × 10 columns:**
 
-| 库 | 文件大小 | 写入时间 | 格式 |
+| Library | File Size | Write Time | Format |
 |---|---|---|---|
 | **jxlsb** | **2.72 MB** | **453 ms** | XLSB |
 | FastExcel | 5.42 MB | 521 ms | XLSX |
 | EasyExcel | 4.21 MB | 1121 ms | XLSX |
 | POI | 4.16 MB | 1528 ms | XLSX |
 
-**1M行 × 10列：**
+**1M rows × 10 columns:**
 
-| 库 | 文件大小 | 写入时间 | 格式 |
+| Library | File Size | Write Time | Format |
 |---|---|---|---|
 | **jxlsb** | **26.71 MB** | **4647 ms** | XLSB |
 | FastExcel | 55.00 MB | 4621 ms | XLSX |
 | EasyExcel | 42.54 MB | 9405 ms | XLSX |
 | POI | 42.25 MB | 8334 ms | XLSX |
 
-## API 场景适配
+## API Scenarios
 
-### 写入 API
+### Write API
 
-| API | 适用场景 | 数据来源 | 内存压力 | 示例 |
+| API | Use Case | Data Source | Memory Pressure | Example |
 |---|---|---|---|---|
-| **writeBatch** | 计算报表、内存数据导出 | 内存已有 / 实时计算 | 无 | 函数式一次性写入 |
-| **startSheet + writeRows + endSheet** | 数据库分页查询、大文件流式处理 | DB分页 / 文件流 | 低 | 分批追加写入 |
-| **template + fillBatch/fillAtMarker** | 模板填充、报表生成 | 模板 + 数据 | 无 | 保留模板样式 |
+| **writeBatch** | Reports, memory data export | In-memory / computed | None | One-shot functional write |
+| **startSheet + writeRows + endSheet** | DB pagination, large file streaming | DB pagination / file stream | Low | Batch append write |
+| **template + fillBatch/fillAtMarker** | Template filling, report generation | Template + data | None | Preserve template styles |
 
-### 模板填充 API
+### Template Fill API
 
-基于XLSB模板填充数据，保留模板所有内容（样式、合并单元格等）：
+Fill data based on XLSB template, preserving all template content (styles, merged cells, etc.):
 
 ```java
-// 创建模板填充Writer
+// Create template fill Writer
 XlsbWriter writer = XlsbWriter.builder()
-    .template(Paths.get("template.xlsb"))  // 模板路径
-    .path(Paths.get("output.xlsb"))        // 输出路径
+    .template(Paths.get("template.xlsb"))  // Template path
+    .path(Paths.get("output.xlsb"))        // Output path
     .build();
 
-// 方式1: 固定位置填充
+// Method 1: Fixed position fill
 List<List<Object>> data = Arrays.asList(
-    Arrays.asList("张三", "北京", 25, "男"),
-    Arrays.asList("李四", "上海", 30, "女")
+    Arrays.asList("John", "NYC", 25, "M"),
+    Arrays.asList("Jane", "LA", 30, "F")
 );
 writer.fillBatch(0, data, 4, 2);  // sheetIndex, dataList, startRow, startCol
 
-// 方式2: 标记查找填充
-writer.fillAtMarker("${data}", data);  // 查找${data}标记位置填充
+// Method 2: Marker lookup fill
+writer.fillAtMarker("${data}", data);  // Find ${data} marker position and fill
 
-// 方式3: 流式填充
+// Method 3: Streaming fill
 writer.startFill(0, 12, 8);
 writer.fillRows(batch1);
 writer.fillRows(batch2);
@@ -69,35 +71,35 @@ writer.endFill();
 writer.close();
 ```
 
-**模板支持范围**：
-- ✅ 保留模板所有内容：styles.bin、theme、静态文本等
-- ✅ 保留单元格样式：字体、边框、填充、对齐
-- ✅ 保留合并单元格
-- ✅ 支持标记查找填充（如`${data}`）
-- ⚠️ **仅支持表头模板**：数据从指定位置向下填充，不支持头尾都有模板
-- ❌ 不支持尾部模板：填充数据后无法保留底部静态内容
+**Template Support Range**:
+- ✅ Preserve all template content: styles.bin, theme, static text, etc.
+- ✅ Preserve cell styles: font, border, fill, alignment
+- ✅ Preserve merged cells
+- ✅ Support marker lookup fill (e.g., `${data}`)
+- ⚠️ **Header template only**: Data fills downward from specified position
+- ❌ No footer template support: Cannot preserve bottom static content after fill
 
-### 读取 API
+### Read API
 
-| API | 适用场景 | 数据量 | 示例 |
+| API | Use Case | Data Size | Example |
 |---|---|---|---|
-| **forEachRow** | 流式处理、数据清洗 | 任意 | 回调处理每行 |
-| **readRows** | 分页读取、批量处理 | 大文件 | List/Array批量返回 |
+| **forEachRow** | Streaming process, data cleansing | Any | Callback per row |
+| **readRows** | Paginated read, batch processing | Large files | List/Array batch return |
 
-### 场景选择指南
+### Scenario Guide
 
-**写入场景**：
+**Write scenarios**:
 
 ```java
-// 场景1: 内存数据导出（推荐 writeBatch）
-List<Product> products = cache.getAll(); // 已在内存
+// Scenario 1: Memory data export (recommended: writeBatch)
+List<Product> products = cache.getAll(); // Already in memory
 writer.writeBatch("Products", (row, col) -> toCell(products.get(row), col), products.size(), 5);
 
-// 场景2: 数据库分页导出（推荐 writeRows 流式追加）
+// Scenario 2: DB pagination export (recommended: writeRows streaming)
 writer.startSheet("Orders", 5);
 int offset = 0;
 while (true) {
-    List<Order> batch = db.query(offset, 1000); // 分页查询，避免OOM
+    List<Order> batch = db.query(offset, 1000); // Paginated query, avoid OOM
     if (batch.isEmpty()) break;
     writer.writeRows(batch, offset, (order, col) -> toCell(order, col));
     offset += batch.size();
@@ -105,51 +107,51 @@ while (true) {
 writer.endSheet();
 ```
 
-**读取场景**：
+**Read scenarios**:
 
 ```java
-// 场景1: 流式处理（推荐 forEachRow）
+// Scenario 1: Streaming process (recommended: forEachRow)
 reader.forEachRow(0, new RowConsumer() {
     void onCell(int row, int col, CellData data) {
-        // 直接处理，无需存储
+        // Process directly, no storage needed
         processCell(data);
     }
 });
 
-// 场景2: 分页批量处理（推荐 readRows）
+// Scenario 2: Paginated batch process (recommended: readRows)
 int offset = 0;
 while (true) {
     List<CellData[]> batch = reader.readRows(0, offset, 1000);
     if (batch.isEmpty()) break;
-    batchProcess(batch); // 批量处理1000行
+    batchProcess(batch); // Batch process 1000 rows
     offset += 1000;
 }
 ```
 
-## 快速开始
+## Quick Start
 
-### Maven依赖
+### Maven Dependency
 
 ```xml
 <dependency>
     <groupId>cn.itcraft</groupId>
     <artifactId>jxlsb</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
-### 写入示例
+### Write Example
 
 ```java
 import cn.itcraft.jxlsb.api.*;
 import java.nio.file.Paths;
 
-// 一次性写入（内存数据）
+// One-shot write (memory data)
 try (XlsbWriter writer = XlsbWriter.builder().path(Paths.get("output.xlsb")).build()) {
     writer.writeBatch("Sheet1", (row, col) -> CellData.number(row * col), 1000, 10);
 }
 
-// 分页追加写入（数据库查询）
+// Streaming append write (DB query)
 try (XlsbWriter writer = XlsbWriter.builder().path(Paths.get("output.xlsb")).build()) {
     writer.startSheet("Orders", 4);
     int offset = 0;
@@ -171,83 +173,83 @@ try (XlsbWriter writer = XlsbWriter.builder().path(Paths.get("output.xlsb")).bui
 }
 ```
 
-### 读取示例
+### Read Example
 
 ```java
 import cn.itcraft.jxlsb.api.*;
 
 try (XlsbReader reader = XlsbReader.builder().path(Paths.get("data.xlsb")).build()) {
-    // 流式处理
+    // Streaming process
     reader.forEachRow(0, new RowConsumer() {
         void onCell(int row, int col, CellData data) {
             System.out.println(row + "," + col + ": " + data.getValue());
         }
     });
     
-    // 分页批量读取
+    // Paginated batch read
     int offset = 0;
     while (true) {
         List<CellData[]> batch = reader.readRows(0, offset, 1000);
         if (batch.isEmpty()) break;
-        // 处理batch
+        // Process batch
         offset += batch.size();
     }
 }
 ```
 
-### 单元格类型
+### Cell Types
 
 ```java
-CellData.text("Hello")       // 文本
-CellData.number(3.14159)     // 数字
-CellData.date(timestamp)     // 日期（毫秒时间戳）
-CellData.bool(true)          // 布尔
-CellData.blank()             // 空白
+CellData.text("Hello")       // Text
+CellData.number(3.14159)     // Number
+CellData.date(timestamp)     // Date (millisecond timestamp)
+CellData.bool(true)          // Boolean
+CellData.blank()             // Blank
 
-// 数字格式（支持百分比、千分位、负红、货币等）
+// Number formats (percentage, comma, negative red, currency, etc.)
 CellData.percentage(0.1234)           // 0.00%
 CellData.numberWithComma(1234567.89)  // #,##0.00
 CellData.numberNegativeRed(-1234.56)  // #,##0.00;[Red]-#,##0.00
-CellData.currency(1234.56)            // ￥#,##0.00
+CellData.currency(1234.56)            // $#,##0.00
 CellData.time(timestamp)              // h:mm:ss
 ```
 
-## 功能状态
+## Feature Status
 
-| 功能 | 状态 | 说明 |
+| Feature | Status | Notes |
 |---|---|---|
-| 数字单元格 | ✅ 完整 | 支持整数、浮点数 |
-| 文本单元格 | ✅ 完整 | SST优化，大文本支持 |
-| 布尔单元格 | ✅ 完整 | |
-| 日期单元格 | ✅ 完整 | Excel日期序列号 |
-| 空白单元格 | ✅ 完整 | |
-| 样式系统 | ✅ 完整 | 字体、边框、填充、对齐 |
-| 数字格式 | ✅ 完整 | 自定义格式字符串 |
-| 流式写入 | ✅ 完整 | startSheet/writeRows/endSheet |
-| 流式读取 | ✅ 完整 | forEachRow回调 |
-| 分页读取 | ✅ 完整 | readRows批量返回 |
-| 模板填充 | ✅ 完整 | fillBatch/fillAtMarker/startFill |
-| 合并单元格 | ✅ 完整 | 模板中合并单元格保留 |
-| 公式 | ❌ 不支持 | |
-| 图表 | ❌ 不支持 | |
-| 条件格式 | ❌ 不支持 | |
-| 宏/VBA | ❌ 不支持 | |
+| Number cell | ✅ Complete | Integer, floating-point |
+| Text cell | ✅ Complete | SST optimized, large text support |
+| Boolean cell | ✅ Complete | |
+| Date cell | ✅ Complete | Excel date serial number |
+| Blank cell | ✅ Complete | |
+| Style system | ✅ Complete | Font, border, fill, alignment |
+| Number format | ✅ Complete | Custom format strings |
+| Streaming write | ✅ Complete | startSheet/writeRows/endSheet |
+| Streaming read | ✅ Complete | forEachRow callback |
+| Paginated read | ✅ Complete | readRows batch return |
+| Template fill | ✅ Complete | fillBatch/fillAtMarker/startFill |
+| Merged cells | ✅ Complete | Preserved from template |
+| Formula | ❌ Not supported | |
+| Chart | ❌ Not supported | |
+| Conditional format | ❌ Not supported | |
+| Macro/VBA | ❌ Not supported | |
 
-## 生产就绪评估
+## Production Readiness
 
-**推荐场景**：
-- ✅ 大数据量Excel导出（100K-1M行）
-- ✅ 数据库分页查询导出
-- ✅ 存储成本敏感（文件小50%）
-- ✅ 内存受限环境（堆外内存）
-- ✅ 模板报表生成（保留样式、合并单元格）
+**Recommended scenarios**:
+- ✅ Large Excel export (100K-1M rows)
+- ✅ Database pagination export
+- ✅ Storage cost sensitive (50% smaller files)
+- ✅ Memory constrained environments (off-heap memory)
+- ✅ Template report generation (preserve styles, merged cells)
 
-**不推荐场景**：
-- ❌ 需要公式、图表
-- ❌ 需要条件格式
-- ❌ 需要头尾都有模板的报表（仅支持表头模板）
+**Not recommended scenarios**:
+- ❌ Requires formulas, charts
+- ❌ Requires conditional formatting
+- ❌ Reports with both header and footer templates (header template only)
 
-## 架构
+## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -270,13 +272,13 @@ CellData.time(timestamp)              // h:mm:ss
 └─────────────────────────────────────────┘
 ```
 
-## 测试覆盖
+## Test Coverage
 
-- **110个测试全部通过**
-- 内存层：分配、读写、关闭、泄漏检测
-- 格式层：BIFF12记录、VarInt编码
-- API层：写入、读取、流式追加
-- 性能测试：100K/1M行对比
+- **130 tests all passing**
+- Memory layer: allocation, read/write, close, leak detection
+- Format layer: BIFF12 records, VarInt encoding
+- API layer: write, read, streaming append
+- Performance tests: 100K/1M row comparison
 
 ## License
 
