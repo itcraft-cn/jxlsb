@@ -128,7 +128,7 @@ byte[] encrypted = encryptor.encryptPackage(Files.readAllBytes(tempPath));
 
 ### 开源版
 
-- GitHub: https://github.com/itcraft/jxlsb
+- GitHub: https://github.com/itcraft-cn/jxlsb
 - Maven:
 ```xml
 <dependency>
