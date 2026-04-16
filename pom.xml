@@ -7,13 +7,23 @@
     
     <groupId>cn.itcraft</groupId>
     <artifactId>jxlsb</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version><!-- managed by updgitver -->
     <packaging>jar</packaging>
     
     <name>jxlsb</name>
     <description>Pure Java XLSB (Excel Binary Workbook) reader/writer library with off-heap memory</description>
+    <url>https://itcraft.cn/jxlsb/</url>
     
     <properties>
+        <plugin.compiler>3.11.0</plugin.compiler>
+        <plugin.jar>3.3.0</plugin.jar>
+        <plugin.surefire>3.1.2</plugin.surefire>
+        <plugin.source>3.2.1</plugin.source>
+        <plugin.javadoc>3.3.2</plugin.javadoc>
+        <plugin.gpg>1.5</plugin.gpg>
+        <plugin.publish>0.7.0</plugin.publish>
+        <plugin.spotbugs>4.8.0</plugin.spotbugs>
+        <plugin.pmd>3.21.0</plugin.pmd>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -103,7 +113,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>${plugin.compiler}</version>
                 <executions>
                     <execution>
                         <id>default-compile</id>
@@ -145,7 +155,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>${plugin.jar}</version>
                 <configuration>
                     <archive>
                         <manifestEntries>
@@ -154,17 +164,75 @@
                     </archive>
                 </configuration>
             </plugin>
-            
+
+            <!-- Surefire Plugin for running tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.1.2</version>
+                <version>${plugin.surefire}</version>
+            </plugin>
+
+            <!-- Source Plugin for generating source JAR -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${plugin.source}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Javadoc Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${plugin.javadoc}</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- GPG Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>${plugin.gpg}</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Publish Plugin -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>${plugin.publish}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>maven-sonatype-central</publishingServerId>
+                </configuration>
             </plugin>
             
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.8.0</version>
+                <version>${plugin.spotbugs}</version>
                 <configuration>
                     <effort>Max</effort>
                     <threshold>Medium</threshold>
@@ -173,7 +241,7 @@
             
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-pmd-plugin</artifactId>
+                <artifactId>${plugin.pmd}</artifactId>
                 <version>3.21.0</version>
                 <configuration>
                     <rulesets>
