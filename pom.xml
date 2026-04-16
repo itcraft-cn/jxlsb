@@ -7,7 +7,7 @@
     
     <groupId>cn.itcraft</groupId>
     <artifactId>jxlsb</artifactId>
-    <version>1.0.0-SNAPSHOT</version><!-- managed by updgitver -->
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     
     <name>jxlsb</name>
@@ -24,13 +24,13 @@
         <plugin.publish>0.7.0</plugin.publish>
         <plugin.spotbugs>4.8.0</plugin.spotbugs>
         <plugin.pmd>3.21.0</plugin.pmd>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <plugin.helper>3.6.0</plugin.helper>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>2.0.9</slf4j.version>
         <junit.version>5.10.0</junit.version>
         <mockito.version>5.5.0</mockito.version>
         <jmh.version>1.37</jmh.version>
+        <jdk23.output>${project.build.directory}/classes-java23</jdk23.output>
     </properties>
     
     <dependencies>
@@ -68,7 +68,6 @@
             <scope>test</scope>
         </dependency>
         
-        <!-- Apache POI for XLSX comparison -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
@@ -82,7 +81,6 @@
             <scope>test</scope>
         </dependency>
         
-        <!-- EasyExcel for XLSX comparison -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
@@ -90,7 +88,6 @@
             <scope>test</scope>
         </dependency>
         
-        <!-- SLF4J Simple for test logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
@@ -98,7 +95,6 @@
             <scope>test</scope>
         </dependency>
         
-        <!-- FastExcel for XLSX comparison -->
         <dependency>
             <groupId>org.dhatim</groupId>
             <artifactId>fastexcel</artifactId>
@@ -109,7 +105,37 @@
     
     <build>
         <plugins>
-            <!-- Java 8 base compilation -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-resources-jdk23</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${jdk23.output}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/resources</directory>
+                                    <excludes>
+                                        <exclude>META-INF/services/*</exclude>
+                                    </excludes>
+                                </resource>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/java23</directory>
+                                    <includes>
+                                        <include>META-INF/**</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -118,8 +144,7 @@
                     <execution>
                         <id>default-compile</id>
                         <configuration>
-                            <source>8</source>
-                            <target>8</target>
+                            <release>8</release>
                             <compilerArgs>
                                 <arg>-Xlint:all</arg>
                             </compilerArgs>
@@ -132,47 +157,66 @@
                             </annotationProcessorPaths>
                         </configuration>
                     </execution>
-                    <!-- Java 23+ MR-JAR compilation -->
                     <execution>
-                        <id>java23-compile</id>
+                        <id>jdk23-compile</id>
                         <phase>compile</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
                         <configuration>
-                            <source>23</source>
-                            <target>23</target>
+                            <release>23</release>
                             <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
                                 <compileSourceRoot>${project.basedir}/src/main/java23</compileSourceRoot>
                             </compileSourceRoots>
-                            <outputDirectory>${project.build.outputDirectory}/META-INF/versions/23</outputDirectory>
+                            <outputDirectory>${jdk23.output}</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
             
-            <!-- Add Multi-Release attribute to MANIFEST.MF -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>${plugin.jar}</version>
-                <configuration>
-                    <archive>
-                        <manifestEntries>
-                            <Multi-Release>true</Multi-Release>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jdk8-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>jdk8</classifier>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>jdk23-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>jdk23</classifier>
+                            <classesDirectory>${jdk23.output}</classesDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
-            <!-- Surefire Plugin for running tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${plugin.surefire}</version>
             </plugin>
 
-            <!-- Source Plugin for generating source JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -187,7 +231,6 @@
                 </executions>
             </plugin>
 
-            <!-- Javadoc Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -202,7 +245,6 @@
                 </executions>
             </plugin>
 
-            <!-- GPG Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
@@ -218,7 +260,6 @@
                 </executions>
             </plugin>
 
-            <!-- Publish Plugin -->
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
@@ -241,8 +282,8 @@
             
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>${plugin.pmd}</artifactId>
-                <version>3.21.0</version>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${plugin.pmd}</version>
                 <configuration>
                     <rulesets>
                         <ruleset>/rulesets/java/quickstart.xml</ruleset>

@@ -9,7 +9,7 @@ class DemoOutputTest {
     
     @Test
     void generateDemoFile() throws Exception {
-        Path file = Paths.get("/disk2/helly_data/code/ai_cli_gen/jxlsb/demo_output.xlsb");
+        Path file = Paths.get(System.getProperty("java.io.tmpdir"), "demo_output.xlsb");
         
         try (XlsbWriter writer = XlsbWriter.builder().path(file).build()) {
             writer.writeBatch("数据", (row, col) -> {
