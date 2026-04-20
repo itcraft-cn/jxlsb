@@ -144,7 +144,8 @@
                     <execution>
                         <id>default-compile</id>
                         <configuration>
-                            <release>8</release>
+                            <source>8</source>
+                            <target>8</target>
                             <compilerArgs>
                                 <arg>-Xlint:all</arg>
                             </compilerArgs>
@@ -164,7 +165,8 @@
                             <goal>compile</goal>
                         </goals>
                         <configuration>
-                            <release>23</release>
+                            <source>23</source>
+                            <target>23</target>
                             <compileSourceRoots>
                                 <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
                                 <compileSourceRoot>${project.basedir}/src/main/java23</compileSourceRoot>
