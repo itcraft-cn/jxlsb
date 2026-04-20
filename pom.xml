@@ -105,36 +105,29 @@
     
     <build>
         <plugins>
-            <plugin>
+<plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <version>${plugin.resources}</version>
-                <executions>
-                    <execution>
-                        <id>copy-resources-jdk23</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${jdk23.output}</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/src/main/resources</directory>
-                                    <excludes>
-                                        <exclude>META-INF/services/*</exclude>
-                                    </excludes>
-                                </resource>
-                                <resource>
-                                    <directory>${project.basedir}/src/main/java23</directory>
-                                    <includes>
-                                        <include>META-INF/**</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${plugin.compiler}</version>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                    <compilerArgs>
+                        <arg>-Xlint:all</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.openjdk.jmh</groupId>
+                            <artifactId>jmh-generator-annprocess</artifactId>
+                            <version>${jmh.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -156,21 +149,6 @@
                                     <version>${jmh.version}</version>
                                 </path>
                             </annotationProcessorPaths>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>jdk23-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <release>23</release>
-                            <compileSourceRoots>
-                                <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
-                                <compileSourceRoot>${project.basedir}/src/main/java23</compileSourceRoot>
-                            </compileSourceRoots>
-                            <outputDirectory>${jdk23.output}</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -196,17 +174,6 @@
                         </goals>
                         <configuration>
                             <classifier>jdk8</classifier>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>jdk23-jar</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                        <configuration>
-                            <classifier>jdk23</classifier>
-                            <classesDirectory>${jdk23.output}</classesDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -293,4 +260,88 @@
             </plugin>
         </plugins>
     </build>
+    
+    <profiles>
+        <profile>
+            <id>jdk23</id>
+            <activation>
+                <jdk>[23,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>${plugin.resources}</version>
+                        <executions>
+                            <execution>
+                                <id>copy-resources-jdk23</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${jdk23.output}</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/main/resources</directory>
+                                            <excludes>
+                                                <exclude>META-INF/services/*</exclude>
+                                            </excludes>
+                                        </resource>
+                                        <resource>
+                                            <directory>${project.basedir}/src/main/java23</directory>
+                                            <includes>
+                                                <include>META-INF/**</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>${plugin.compiler}</version>
+                        <executions>
+                            <execution>
+                                <id>jdk23-compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <release>23</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
+                                        <compileSourceRoot>${project.basedir}/src/main/java23</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <outputDirectory>${jdk23.output}</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>${plugin.jar}</version>
+                        <executions>
+                            <execution>
+                                <id>jdk23-jar</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>jdk23</classifier>
+                                    <classesDirectory>${jdk23.output}</classesDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
