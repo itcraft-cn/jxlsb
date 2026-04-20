@@ -66,7 +66,6 @@ public final class VarIntReader {
     }
     
     public static int readIntLE(byte[] buffer, int offset) {
-        if (offset + 4 > buffer.length) return 0;
         return (buffer[offset] & 0xFF) |
                ((buffer[offset + 1] & 0xFF) << 8) |
                ((buffer[offset + 2] & 0xFF) << 16) |
@@ -74,7 +73,6 @@ public final class VarIntReader {
     }
     
     public static double readDoubleLE(byte[] buffer, int offset) {
-        if (offset + 8 > buffer.length) return 0.0;
         long bits = ((long)buffer[offset] & 0xFF) |
                     (((long)buffer[offset + 1] & 0xFF) << 8) |
                     (((long)buffer[offset + 2] & 0xFF) << 16) |

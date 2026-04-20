@@ -60,8 +60,15 @@ public final class SharedStringsTable {
             while ((bytesRead = inputStream.read(buffer, offset, buffer.length - offset)) != -1) {
                 offset += bytesRead;
                 
-                if (offset >= buffer.length) {
-                    processBuffer(buffer, offset);
+                int processed = processBuffer(buffer, offset);
+                
+                if (processed < offset) {
+                    int remaining = offset - processed;
+                    if (remaining > 0 && remaining < buffer.length) {
+                        System.arraycopy(buffer, processed, buffer, 0, remaining);
+                    }
+                    offset = remaining;
+                } else {
                     offset = 0;
                 }
             }
@@ -74,7 +81,7 @@ public final class SharedStringsTable {
         }
     }
     
-    private void processBuffer(byte[] buffer, int length) throws IOException {
+    private int processBuffer(byte[] buffer, int length) {
         int pos = 0;
         
         while (pos + 2 <= length) {
@@ -82,13 +89,20 @@ public final class SharedStringsTable {
             int typeSize = VarIntReader.varIntSize(recordType);
             pos += typeSize;
             
-            if (pos >= length) break;
+            if (pos >= length) return pos - typeSize;
             
             int recordSize = VarIntReader.readVarSize(buffer, pos);
             int sizeBytes = VarIntReader.varSizeSize(recordSize);
             pos += sizeBytes;
             
-            if (recordSize < 0 || pos + recordSize > length) break;
+            if (recordSize < 0) {
+                pos += Math.max(0, recordSize);
+                continue;
+            }
+            
+            if (pos + recordSize > length) {
+                return pos - typeSize - sizeBytes;
+            }
             
             if (recordType == Biff12RecordType.BrtSSTItem) {
                 String text = parseSSTItem(buffer, pos, recordSize);
@@ -97,6 +111,8 @@ public final class SharedStringsTable {
             
             pos += recordSize;
         }
+        
+        return pos;
     }
     
     private String parseSSTItem(byte[] buffer, int offset, int size) {
