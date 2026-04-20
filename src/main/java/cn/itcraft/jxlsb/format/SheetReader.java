@@ -47,17 +47,17 @@ public final class SheetReader implements AutoCloseable {
             currentHandler.onRowEnd(currentRow);
         }
         
-        if (offset + 4 > buffer.length) return;
+        if (size < 4) return;
         currentRow = VarIntReader.readIntLE(buffer, offset);
         currentHandler = handler;
         
         int numSpans = 0;
-        if (offset + 17 <= buffer.length) {
+        if (size >= 17) {
             numSpans = VarIntReader.readIntLE(buffer, offset + 13);
         }
         
         int lastCol = 0;
-        if (numSpans > 0 && offset + 17 + numSpans * 8 <= buffer.length) {
+        if (numSpans > 0 && size >= 17 + numSpans * 8) {
             int lastSpanOffset = offset + 17 + (numSpans - 1) * 8;
             lastCol = VarIntReader.readIntLE(buffer, lastSpanOffset + 4);
         }
@@ -103,7 +103,7 @@ public final class SheetReader implements AutoCloseable {
     }
     
     private void handleBrtCellIsst(byte[] buffer, int offset, int size, RowHandler handler) {
-        if (offset + 12 > buffer.length) return;
+        if (size < 12) return;
         
         int col = VarIntReader.readIntLE(buffer, offset);
         int sstIndex = VarIntReader.readIntLE(buffer, offset + 8);
@@ -125,11 +125,12 @@ public final class SheetReader implements AutoCloseable {
                 
                 int processed = processSheetBuffer(buffer, offset, handler);
                 
-                if (processed > 0 && processed < offset) {
-                    byte[] remaining = new byte[offset - processed];
-                    System.arraycopy(buffer, processed, remaining, 0, remaining.length);
-                    System.arraycopy(remaining, 0, buffer, 0, remaining.length);
-                    offset = remaining.length;
+                if (processed < offset) {
+                    int remaining = offset - processed;
+                    if (remaining > 0 && remaining < buffer.length) {
+                        System.arraycopy(buffer, processed, buffer, 0, remaining);
+                    }
+                    offset = remaining;
                 } else {
                     offset = 0;
                 }
