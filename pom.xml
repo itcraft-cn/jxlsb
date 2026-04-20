@@ -165,8 +165,7 @@
                             <goal>compile</goal>
                         </goals>
                         <configuration>
-                            <source>23</source>
-                            <target>23</target>
+                            <release>23</release>
                             <compileSourceRoots>
                                 <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
                                 <compileSourceRoot>${project.basedir}/src/main/java23</compileSourceRoot>
