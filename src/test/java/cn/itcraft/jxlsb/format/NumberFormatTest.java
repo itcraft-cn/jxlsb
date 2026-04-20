@@ -5,12 +5,13 @@ import cn.itcraft.jxlsb.api.CellData;
 import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 class NumberFormatTest {
     
     @Test
     void writeAllFormats() throws Exception {
-        Path output = Path.of("/tmp/all_formats.xlsb");
+        Path output = Paths.get("/tmp/all_formats.xlsb");
         
         System.out.println("=== 所有数字格式测试 ===\n");
         
@@ -45,7 +46,7 @@ class NumberFormatTest {
     
     @Test
     void percentageFormats() throws Exception {
-        Path output = Path.of("/tmp/percentage.xlsb");
+        Path output = Paths.get("/tmp/percentage.xlsb");
         
         System.out.println("=== 百分比格式测试 ===\n");
         
@@ -71,7 +72,7 @@ class NumberFormatTest {
     
     @Test
     void timeFormats() throws Exception {
-        Path output = Path.of("/tmp/time_format.xlsb");
+        Path output = Paths.get("/tmp/time_format.xlsb");
         
         System.out.println("=== 时间格式测试 ===\n");
         
@@ -99,7 +100,7 @@ class NumberFormatTest {
     
     @Test
     void negativeRedFormat() throws Exception {
-        Path output = Path.of("/tmp/negative_red.xlsb");
+        Path output = Paths.get("/tmp/negative_red.xlsb");
         
         System.out.println("=== 负红格式测试 ===\n");
         
@@ -122,7 +123,7 @@ class NumberFormatTest {
     
     @Test
     void commaFormats() throws Exception {
-        Path output = Path.of("/tmp/comma_format.xlsb");
+        Path output = Paths.get("/tmp/comma_format.xlsb");
         
         System.out.println("=== 千分位格式测试 ===\n");
         
