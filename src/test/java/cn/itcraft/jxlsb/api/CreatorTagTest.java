@@ -1,5 +1,6 @@
 package cn.itcraft.jxlsb.api;
 
+import cn.itcraft.jxlsb.util.IoUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
@@ -24,7 +25,7 @@ class CreatorTagTest {
             ZipEntry coreEntry = zf.getEntry("docProps/core.xml");
             assertNotNull(coreEntry, "core.xml should exist");
             
-            String coreContent = new String(zf.getInputStream(coreEntry).readAllBytes());
+            String coreContent = new String(IoUtils.readAllBytes(zf.getInputStream(coreEntry)));
             
             // 作者 = jxlsb
             assertTrue(coreContent.contains("<dc:creator>jxlsb</dc:creator>"),
@@ -41,7 +42,7 @@ class CreatorTagTest {
             ZipEntry appEntry = zf.getEntry("docProps/app.xml");
             assertNotNull(appEntry, "app.xml should exist");
             
-            String appContent = new String(zf.getInputStream(appEntry).readAllBytes());
+            String appContent = new String(IoUtils.readAllBytes(zf.getInputStream(appEntry)));
             assertTrue(appContent.contains("<Application>jxlsb</Application>"),
                 "app.xml should contain Application tag");
         }

@@ -4,6 +4,7 @@ import cn.itcraft.jxlsb.api.XlsbWriter;
 import cn.itcraft.jxlsb.container.SheetInfo;
 import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +28,7 @@ class TemplateFillTest {
     @Test
     void fillTemplateWithFixedPosition() throws IOException {
         Path templatePath = getTemplatePath();
-        Path outputPath = Path.of("/tmp/output_fixed.xlsb");
+        Path outputPath = Paths.get("/tmp/output_fixed.xlsb");
         
         System.out.println("=== 固定位置填充测试 ===");
         System.out.println("模板: src/test/resources/template/demo_template.xlsb");
@@ -60,7 +61,7 @@ class TemplateFillTest {
     @Test
     void fillTemplateWithMarker() throws IOException {
         Path templatePath = getTemplatePath();
-        Path outputPath = Path.of("/tmp/output_marker.xlsb");
+        Path outputPath = Paths.get("/tmp/output_marker.xlsb");
         
         System.out.println("\n=== 标记查找填充测试 ===");
         System.out.println("模板: src/test/resources/template/demo_template.xlsb");
@@ -86,7 +87,7 @@ class TemplateFillTest {
     @Test
     void streamingFillTest() throws IOException {
         Path templatePath = getTemplatePath();
-        Path outputPath = Path.of("/tmp/output_streaming.xlsb");
+        Path outputPath = Paths.get("/tmp/output_streaming.xlsb");
         
         System.out.println("\n=== 流式填充测试 ===");
         System.out.println("模板: src/test/resources/template/demo_template.xlsb");

@@ -5,6 +5,7 @@ import cn.itcraft.jxlsb.api.CellData;
 import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -13,7 +14,7 @@ class DateFormatTest {
     
     @Test
     void writeDatesWithCorrectFormat() throws Exception {
-        Path output = Path.of("/tmp/date_format_test.xlsb");
+        Path output = Paths.get("/tmp/date_format_test.xlsb");
         
         System.out.println("=== 日期格式测试 ===\n");
         
@@ -52,7 +53,7 @@ class DateFormatTest {
     
     @Test
     void writeMixedTypes() throws Exception {
-        Path output = Path.of("/tmp/mixed_types.xlsb");
+        Path output = Paths.get("/tmp/mixed_types.xlsb");
         
         System.out.println("=== 混合类型测试 ===\n");
         
