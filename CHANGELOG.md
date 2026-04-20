@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-20
+
+### Fixed
+
+- **readRows buffer boundary bug**: Text cells (BrtCellIsst) were incorrectly skipped when reading near batch boundaries
+  - Root cause: `handleBrtCellIsst` used `buffer.length` (fixed 16384) instead of `recordSize` for boundary check
+  - When offset approached buffer end, text cells (col 0/1) were lost, causing NullPointerException in test
+  - Fix: Use `recordSize` parameter since upper layer `processSheetBuffer` already ensures data integrity
+- **SheetReader.java**: `handleBrtRowHdr` and `handleBrtCellIsst` now use `size` instead of `buffer.length`
+- **VarIntReader.java**: Removed incorrect boundary checks that returned default values
+- **SharedStringsTable.java**: `processBuffer` now returns processed position, `load` handles remaining data correctly
+
+### Added
+
+- **Java 8 compatibility**: 
+  - `IoUtils.java` utility class for `readAllBytes()` replacement
+  - Test files updated to use `Paths.get()` instead of `Path.of()` (Java 9+)
+  - pom.xml profile mechanism for JDK23 compilation (skip in JDK8 environment)
+
 ## [1.0.0] - 2026-04-16
 
 ### Added
