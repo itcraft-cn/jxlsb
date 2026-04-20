@@ -116,16 +116,20 @@ public final class XlsbReader implements AutoCloseable {
     public List<CellData[]> readRows(int sheetIndex, int startRow, int batchSize) throws IOException {
         final int fStartRow = startRow;
         final int fEndRow = startRow + batchSize - 1;
+        final int estimatedColumns = 100;  // 预估列数，避免依赖 spans 解析
         List<CellData[]> result = new ArrayList<>(batchSize);
         
         try (SheetReader reader = getSheetReader(sheetIndex)) {
             reader.readRows(new RowHandler() {
                 private CellData[] currentRowData;
+                private int maxColInRow = -1;
                 
                 @Override
                 public void onRowStart(int rowIndex, int colCount) {
                     if (rowIndex >= fStartRow && rowIndex <= fEndRow) {
-                        currentRowData = new CellData[colCount];
+                        int actualColCount = Math.max(colCount, estimatedColumns);
+                        currentRowData = new CellData[actualColCount];
+                        maxColInRow = -1;
                     } else if (rowIndex > fEndRow) {
                         throw new SheetReader.BatchCompleteException();
                     }
@@ -133,43 +137,67 @@ public final class XlsbReader implements AutoCloseable {
                 
                 @Override
                 public void onCellNumber(int row, int col, double value) {
-                    if (currentRowData != null && col < currentRowData.length) {
+                    if (currentRowData != null) {
+                        ensureCapacity(col + 1);
                         currentRowData[col] = CellData.number(value);
+                        maxColInRow = Math.max(maxColInRow, col);
                     }
                 }
                 
                 @Override
                 public void onCellText(int row, int col, String value) {
-                    if (currentRowData != null && col < currentRowData.length) {
+                    if (currentRowData != null) {
+                        ensureCapacity(col + 1);
                         currentRowData[col] = CellData.text(value);
+                        maxColInRow = Math.max(maxColInRow, col);
                     }
                 }
                 
                 @Override
                 public void onCellBoolean(int row, int col, boolean value) {
-                    if (currentRowData != null && col < currentRowData.length) {
+                    if (currentRowData != null) {
+                        ensureCapacity(col + 1);
                         currentRowData[col] = CellData.bool(value);
+                        maxColInRow = Math.max(maxColInRow, col);
                     }
                 }
                 
                 @Override
                 public void onCellBlank(int row, int col) {
-                    if (currentRowData != null && col < currentRowData.length) {
+                    if (currentRowData != null) {
+                        ensureCapacity(col + 1);
                         currentRowData[col] = CellData.blank();
+                        maxColInRow = Math.max(maxColInRow, col);
                     }
                 }
                 
                 @Override
                 public void onCellDate(int row, int col, double excelDate) {
-                    if (currentRowData != null && col < currentRowData.length) {
+                    if (currentRowData != null) {
+                        ensureCapacity(col + 1);
                         currentRowData[col] = CellData.date((long)excelDate);
+                        maxColInRow = Math.max(maxColInRow, col);
+                    }
+                }
+                
+                private void ensureCapacity(int required) {
+                    if (required > currentRowData.length) {
+                        CellData[] newData = new CellData[required];
+                        System.arraycopy(currentRowData, 0, newData, 0, currentRowData.length);
+                        currentRowData = newData;
                     }
                 }
                 
                 @Override
                 public void onRowEnd(int rowIndex) {
                     if (currentRowData != null) {
-                        result.add(currentRowData);
+                        if (maxColInRow >= 0) {
+                            CellData[] trimmed = new CellData[maxColInRow + 1];
+                            System.arraycopy(currentRowData, 0, trimmed, 0, maxColInRow + 1);
+                            result.add(trimmed);
+                        } else {
+                            result.add(new CellData[0]);
+                        }
                         currentRowData = null;
                     }
                     
@@ -179,7 +207,6 @@ public final class XlsbReader implements AutoCloseable {
                 }
             });
         } catch (SheetReader.BatchCompleteException e) {
-            // 正常结束，读取到目标行数
         }
         
         return result;
