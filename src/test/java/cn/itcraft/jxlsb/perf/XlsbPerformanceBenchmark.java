@@ -2,17 +2,15 @@ package cn.itcraft.jxlsb.perf;
 
 import cn.itcraft.jxlsb.api.*;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 class XlsbPerformanceBenchmark {
     
-    @TempDir
-    Path tempDir;
-    
+    private static final String TEMP_DIR = "/tmp";
     private static final int TOTAL_ROWS = 1_000_000;
     private static final int COLUMN_COUNT = 10;
     private static final int PAGE_SIZE = 1000;
@@ -24,8 +22,8 @@ class XlsbPerformanceBenchmark {
         System.out.println("║         字段类型: 3字符串 + 4整数 + 3浮点数                   ║");
         System.out.println("╚══════════════════════════════════════════════════════════════╝\n");
         
-        Path batchFile = tempDir.resolve("batch_write.xlsb");
-        Path streamFile = tempDir.resolve("stream_write.xlsb");
+        Path batchFile = Paths.get(TEMP_DIR, "jxlsb_batch_write.xlsb");
+        Path streamFile = Paths.get(TEMP_DIR, "jxlsb_stream_write.xlsb");
         
         System.out.println("═════════════════════════════════════════════════════════════");
         System.out.println("1. 普通分页写 (startSheet + writeRows + endSheet)");
@@ -52,10 +50,16 @@ class XlsbPerformanceBenchmark {
         System.out.printf("写入耗时: %d ms\n", batchWriteTime);
         System.out.printf("文件大小: %.2f MB\n", batchWriteSize / 1_000_000.0);
         System.out.printf("写入速度: %.2f 行/秒\n", TOTAL_ROWS / (batchWriteTime / 1000.0));
+        System.out.printf("文件路径: %s\n", batchFile);
         
         System.out.println("\n═════════════════════════════════════════════════════════════");
         System.out.println("2. 普通分页读 (readRows, 每次1000行)");
         System.out.println("═════════════════════════════════════════════════════════════\n");
+        
+        if (!Files.exists(batchFile)) {
+            System.err.println("ERROR: 文件不存在: " + batchFile);
+            return;
+        }
         
         long batchReadTime;
         {
@@ -136,11 +140,11 @@ class XlsbPerformanceBenchmark {
     private CellData createCell(int row, int col) {
         switch (col) {
             case 0: return CellData.text("Name-" + row);
-            case 1: return CellData.text("Category-" + (row % 100));
-            case 2: return CellData.text("Region-" + (row % 10));
+            case 1: return CellData.text("Cat-" + (row % 100));
+            case 2: return CellData.text("R-" + (row % 10));
             case 3: return CellData.number(row);
-            case 4: return CellData.number(row * 10);
-            case 5: return CellData.number(row * 100);
+            case 4: return CellData.number(row * 10L);
+            case 5: return CellData.number(row * 100L);
             case 6: return CellData.number(row % 1000);
             case 7: return CellData.number(row * 1.5);
             case 8: return CellData.number(row * 2.345);
