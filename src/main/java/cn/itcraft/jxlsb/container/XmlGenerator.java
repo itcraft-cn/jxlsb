@@ -27,9 +27,13 @@ public final class XmlGenerator {
     private static String loadTemplate(String name) {
         try (InputStream is = XmlGenerator.class.getClassLoader().getResourceAsStream(name)) {
             Objects.requireNonNull(is, "Template not found: " + name);
-            byte[] bytes = new byte[is.available()];
-            int read = is.read(bytes);
-            return new String(bytes, 0, read, StandardCharsets.UTF_8);
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            return baos.toString(StandardCharsets.UTF_8.name());
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load template: " + name, e);
         }

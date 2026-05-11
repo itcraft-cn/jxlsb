@@ -56,8 +56,9 @@ public final class SheetWriter {
     
     public byte[] writeSheet(CellDataSupplier supplier, int rowCount, int columnCount) 
             throws IOException {
-        int estimatedSize = rowCount * columnCount * 30 + 1024;
-        Biff12Writer w = new Biff12Writer(estimatedSize);
+        // 预估缓冲区大小，设置上限避免超大Sheet过度分配
+        int estimatedSize = Math.min(rowCount * columnCount * 30 + 1024, 16 * 1024 * 1024);
+        Biff12Writer w = new Biff12Writer(Math.max(estimatedSize, 4096));
         
         writeSheetHeader(w, rowCount, columnCount);
         
@@ -449,8 +450,9 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
         int totalRows = Math.max(templateMaxRow + 1, startRow + rowCount);
         int totalCols = Math.max(templateMaxCol + 1, startCol + columnCount);
         
-        int estimatedSize = totalRows * totalCols * 30 + 1024;
-        Biff12Writer w = new Biff12Writer(estimatedSize);
+        // 预估缓冲区大小，设置上限避免超大Sheet过度分配
+        int estimatedSize = Math.min(totalRows * totalCols * 30 + 1024, 16 * 1024 * 1024);
+        Biff12Writer w = new Biff12Writer(Math.max(estimatedSize, 4096));
         
         writeSheetHeader(w, totalRows, totalCols);
         w.writeEmptyRecord(Biff12RecordType.BrtBeginSheetData);

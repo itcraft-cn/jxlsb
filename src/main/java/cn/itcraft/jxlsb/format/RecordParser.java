@@ -45,6 +45,8 @@ public final class RecordParser {
         MemoryBlock recordData = null;
         if (recordSize > 0) {
             recordData = allocator.allocateFromPool(recordSize);
+            // NOTE: 这里通过byte[]中转是必要的，因为MemoryBlock接口不支持块间直接复制。
+            // 若后续MemoryBlock增加copyTo方法可消除此分配。
             byte[] data = new byte[recordSize];
             block.getBytes(offset + RECORD_HEADER_SIZE, data, 0, recordSize);
             recordData.putBytes(0, data, 0, recordSize);

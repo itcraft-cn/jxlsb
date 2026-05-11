@@ -84,5 +84,39 @@ public final class VarIntReader {
         return Double.longBitsToDouble(bits);
     }
     
+    /**
+     * 解码RK编码的数值
+     *
+     * <p>根据MS-XLSB规范2.5.6节：
+     * <ul>
+     *   <li>Bit 0: isInt标志（0=IEEE float, 1=integer）</li>
+     *   <li>Bit 1: div100标志（0=原值, 1=除以100）</li>
+     *   <li>Bits 2-31: IEEE 754 double的高30位或整数值</li>
+     * </ul>
+     *
+     * @param rkValue RK编码的整数值
+     * @return 解码后的double值
+     */
+    public static double decodeRk(int rkValue) {
+        boolean isInt = (rkValue & 0x01) != 0;
+        boolean div100 = (rkValue & 0x02) != 0;
+        
+        int valueBits = rkValue & 0xFFFFFFFC;
+        
+        double value;
+        if (isInt) {
+            value = valueBits >> 2;
+        } else {
+            long doubleBits = ((long)valueBits << 32);
+            value = Double.longBitsToDouble(doubleBits);
+        }
+        
+        if (div100) {
+            value /= 100.0;
+        }
+        
+        return value;
+    }
+    
     private VarIntReader() {}
 }

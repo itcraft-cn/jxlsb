@@ -102,7 +102,8 @@ public final class XlsbFormatReader {
                 try {
                     record.close();
                 } catch (Exception e) {
-                    // ignore
+                    org.slf4j.LoggerFactory.getLogger(XlsbFormatReader.class)
+                        .warn("Failed to close CellRecord: {}", e.getMessage());
                 }
             }
             cellRecords.clear();

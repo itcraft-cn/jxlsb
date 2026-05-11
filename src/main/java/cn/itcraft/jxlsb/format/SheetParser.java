@@ -195,7 +195,7 @@ public final class SheetParser implements AutoCloseable {
         int col = VarIntReader.readIntLE(buffer, offset);
         int styleIndex = readStyleIndex(buffer, offset);
         int rkValue = VarIntReader.readIntLE(buffer, offset + 8);
-        double value = decodeRk(rkValue);
+        double value = VarIntReader.decodeRk(rkValue);
         cells.add(new CellInfo(row, col, CellData.number(value), styleIndex));
         maxCol = Math.max(maxCol, col);
     }
@@ -225,24 +225,4 @@ public final class SheetParser implements AutoCloseable {
                ((buffer[offset + 6] & 0xFF) << 16);
     }
     
-    private double decodeRk(int rkValue) {
-        boolean isInt = (rkValue & 0x01) != 0;
-        boolean div100 = (rkValue & 0x02) != 0;
-        
-        int valueBits = rkValue & 0xFFFFFFFC;
-        
-        double value;
-        if (isInt) {
-            value = valueBits >> 2;
-        } else {
-            long doubleBits = ((long)valueBits << 32);
-            value = Double.longBitsToDouble(doubleBits);
-        }
-        
-        if (div100) {
-            value /= 100.0;
-        }
-        
-        return value;
-    }
 }

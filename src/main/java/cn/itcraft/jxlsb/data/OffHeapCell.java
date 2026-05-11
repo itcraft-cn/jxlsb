@@ -1,8 +1,10 @@
 package cn.itcraft.jxlsb.data;
 
 import cn.itcraft.jxlsb.memory.MemoryBlock;
-import cn.itcraft.jxlsb.memory.OffHeapAllocator;
 import java.nio.charset.StandardCharsets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 堆外单元格数据结构
@@ -11,6 +13,8 @@ import java.nio.charset.StandardCharsets;
  * @since 1.0.0
  */
 public final class OffHeapCell implements AutoCloseable {
+    
+    private static final Logger log = LoggerFactory.getLogger(OffHeapCell.class);
     
     private static final int TYPE_OFFSET = 0;
     private static final int VALUE_OFFSET = 4;
@@ -29,8 +33,10 @@ public final class OffHeapCell implements AutoCloseable {
     public void setText(String text) {
         byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         if (bytes.length > MAX_TEXT_SIZE) {
-            bytes = new byte[MAX_TEXT_SIZE];
-            System.arraycopy(text.getBytes(StandardCharsets.UTF_8), 0, bytes, 0, MAX_TEXT_SIZE);
+            log.warn("Text truncated from {} to {} bytes (max={})", bytes.length, MAX_TEXT_SIZE, MAX_TEXT_SIZE);
+            byte[] truncated = new byte[MAX_TEXT_SIZE];
+            System.arraycopy(bytes, 0, truncated, 0, MAX_TEXT_SIZE);
+            bytes = truncated;
         }
         memoryBlock.putInt(TYPE_OFFSET, CellType.TEXT.getCode());
         memoryBlock.putInt(VALUE_OFFSET, bytes.length);

@@ -10,6 +10,18 @@ import java.nio.charset.StandardCharsets;
  */
 public final class Biff12Writer {
     
+    // 变长编码阈值常量（MS-XLSB规范2.1.4节）
+    /** 单字节变长整数最大值 (0x7F) */
+    private static final int VAR_INT_1BYTE_MAX = 0x7F;
+    /** 单字节变长大小最大值 */
+    private static final int VAR_SIZE_1BYTE_MAX = 127;
+    /** 双字节变长大小最大值 */
+    private static final int VAR_SIZE_2BYTE_MAX = 16383;
+    /** 三字节变长大小最大值 */
+    private static final int VAR_SIZE_3BYTE_MAX = 2097151;
+    /** 高位续位标志 (0x80) */
+    private static final int VAR_CONTINUE_FLAG = 0x80;
+    
     private final ByteArrayOutputStream baos;
     // 实例级别buffer，避免循环内重复创建
     private final byte[] intBuffer = new byte[4];
@@ -36,12 +48,10 @@ public final class Biff12Writer {
      * 规则：高位置1表示需要下一字节，实际值用低7位
      */
     private void writeVarInt(int value) throws IOException {
-        if (value >= 128) {
-            // 需要2字节
-            baos.write((value & 0x7F) | 0x80);  // 低7位 + 高位置1
+        if (value > VAR_INT_1BYTE_MAX) {
+            baos.write((value & 0x7F) | VAR_CONTINUE_FLAG);
             baos.write((value >> 7) & 0x7F);     // 高7位
         } else {
-            // 只需1字节
             baos.write(value & 0x7F);
         }
     }
@@ -51,19 +61,19 @@ public final class Biff12Writer {
      * 规则：高位置1表示需要下一字节，最多4字节
      */
     private void writeVarSize(int value) throws IOException {
-        if (value < 128) {
+        if (value <= VAR_SIZE_1BYTE_MAX) {
             baos.write(value);
-        } else if (value < 16384) {
-            baos.write((value & 0x7F) | 0x80);
+        } else if (value <= VAR_SIZE_2BYTE_MAX) {
+            baos.write((value & 0x7F) | VAR_CONTINUE_FLAG);
             baos.write((value >> 7) & 0x7F);
-        } else if (value < 2097152) {
-            baos.write((value & 0x7F) | 0x80);
-            baos.write(((value >> 7) & 0x7F) | 0x80);
+        } else if (value <= VAR_SIZE_3BYTE_MAX) {
+            baos.write((value & 0x7F) | VAR_CONTINUE_FLAG);
+            baos.write(((value >> 7) & 0x7F) | VAR_CONTINUE_FLAG);
             baos.write((value >> 14) & 0x7F);
         } else {
-            baos.write((value & 0x7F) | 0x80);
-            baos.write(((value >> 7) & 0x7F) | 0x80);
-            baos.write(((value >> 14) & 0x7F) | 0x80);
+            baos.write((value & 0x7F) | VAR_CONTINUE_FLAG);
+            baos.write(((value >> 7) & 0x7F) | VAR_CONTINUE_FLAG);
+            baos.write(((value >> 14) & 0x7F) | VAR_CONTINUE_FLAG);
             baos.write((value >> 21) & 0x7F);
         }
     }

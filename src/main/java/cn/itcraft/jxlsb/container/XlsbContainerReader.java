@@ -55,15 +55,9 @@ public final class XlsbContainerReader implements AutoCloseable {
     }
     
     public List<SheetInfo> getSheetInfos() throws IOException {
-        WorkbookReader reader = new WorkbookReader(getWorkbookStream());
-        try {
+        try (InputStream workbookStream = getWorkbookStream();
+             WorkbookReader reader = new WorkbookReader(workbookStream)) {
             return reader.parseSheetList();
-        } finally {
-            try {
-                reader.close();
-            } catch (IOException e) {
-                log.warn("Failed to close workbook reader: {}", e.getMessage());
-            }
         }
     }
     

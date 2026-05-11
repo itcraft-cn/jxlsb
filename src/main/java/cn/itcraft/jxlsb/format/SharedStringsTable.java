@@ -18,15 +18,13 @@ public final class SharedStringsTable {
     
     public int addString(String str) {
         totalCount.incrementAndGet();
-        
-        return indexMap.computeIfAbsent(str, k -> {
-            int newIndex;
-            synchronized (strings) {
-                newIndex = strings.size();
+        synchronized (this) {
+            return indexMap.computeIfAbsent(str, k -> {
+                int newIndex = strings.size();
                 strings.add(k);
-            }
-            return newIndex;
-        });
+                return newIndex;
+            });
+        }
     }
     
     public int getCount() {

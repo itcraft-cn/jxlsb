@@ -2,6 +2,24 @@ package cn.itcraft.jxlsb.api;
 
 import cn.itcraft.jxlsb.data.CellType;
 
+/**
+ * Cell数据类
+ *
+ * <p>表示XLSB单元格的数据值。支持数字、文本、布尔、日期等类型。
+ *
+ * <p><b>格式与样式说明：</b>
+ * <ul>
+ *   <li>{@code formatCode} — 写入时使用，表示期望的数字格式字符串（如"#,##0.00"）。
+ *       SheetWriter写入时负责将formatCode解析为最终的XF样式索引。</li>
+ *   <li>{@code styleIndex} — 读取时使用，表示模板解析得到的原始XF样式索引。
+ *       仅在模板填充场景有意义。</li>
+ *   <li>两者使用场景互斥：通过工厂方法构造时formatCode有值（styleIndex=-1），
+ *       通过模板解析构造时styleIndex有值（formatCode=null）。</li>
+ * </ul>
+ *
+ * @author AI架构师
+ * @since 1.0.0
+ */
 public final class CellData {
     
     private final CellType type;
@@ -104,6 +122,15 @@ public final class CellData {
     
     public Double getNumberValue() {
         return type == CellType.NUMBER ? (Double) value : null;
+    }
+    
+    /**
+     * 获取数字值（原始类型，避免装箱开销）。
+     *
+     * @return 数字值（非NUMBER类型时返回0.0）
+     */
+    public double getNumberPrimitive() {
+        return type == CellType.NUMBER ? (Double) value : 0.0;
     }
     
     public Boolean getBooleanValue() {
