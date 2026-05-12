@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant API as XlsbWriter
+    participant SW as SheetWriter
+    participant BW as Biff12Writer
+    participant SST as SharedStringsTable
+    participant STYLES as StylesWriter
+    
+    API->>SW: startStreaming(columnCount)
+    SW->>BW: new Biff12Writer(1MB)
+    SW->>BW: writeSheetHeader()
+    Note over BW: BrtBeginSheet<br/>BrtWsProp<br/>BrtWsDim<br/>BrtBeginWsViews
+    
+    loop 批次数据
+        API->>SW: appendRows(supplier, startRow, batchSize)
+        loop 每行
+            SW->>BW: writeBrtRowHdr(row, colCount)
+            loop 每列
+                SW->>SST: addString(text) [if TEXT]
+                SST-->>SW: sstIndex
+                SW->>STYLES: addDateFormat(format) [if DATE]
+                STYLES-->>SW: styleId
+                SW->>BW: writeCell(recordType, size)
+                Note over BW: writeCell结构<br/>writeValue<br/>writeRecordHeader
+            end
+        end
+    end
+    
+    API->>SW: finalizeStreaming(totalRows)
+    SW->>BW: writeSheetFooter()
+    Note over BW: BrtEndSheetData<br/>BrtPageSetup<br/>BrtEndSheet
+    BW-->>SW: byte[] sheetData
+    SW-->>API: sheetData

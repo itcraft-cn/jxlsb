@@ -1,0 +1,23 @@
+graph TD
+    A[CellData with formatCode] --> B{格式已注册?}
+    B -->|是| C[返回已有formatId]
+    B -->|否| D[NumberFormatRegistry.addFormat]
+    D --> E[分配自定义ID 164+]
+    E --> F[customFormats.put id, format]
+    F --> G[formatStringToId.put format, id]
+    G --> H[返回formatId]
+    H --> I{样式已注册?}
+    I -->|是| J[返回已有styleId]
+    I -->|否| K[CellStyleRegistry.addStyle]
+    K --> L[创建CellStyleFormat]
+    L --> M[styles.add format]
+    M --> N[返回styleId]
+    N --> O[SheetWriter.writeCell]
+    O --> P[Biff12Writer.writeCell col, styleId]
+    
+    Q[生成styles.bin] --> R[StylesWriter.toBiff12Bytes]
+    R --> S[writeFormats: BrtBeginFmts...]
+    S --> T[writeFonts: BrtFont...]
+    T --> U[writeFills: BrtFill...]
+    U --> V[writeBorders: BrtBorder...]
+    V --> W[writeStyles: BrtXF...]

@@ -1,0 +1,47 @@
+sequenceDiagram
+    participant ZIP as InputStream
+    participant SR as SheetReader
+    participant VI as VarIntReader
+    participant SST as SharedStringsTable
+    participant HANDLER as RowHandler
+    
+    ZIP->>SR: worksheet.bin bytes
+    SR->>SR: read(buffer, offset)
+    
+    loop 流式解析
+        SR->>VI: readVarInt(buffer, pos)
+        VI-->>SR: recordType
+        SR->>VI: readVarSize(buffer, pos)
+        VI-->>SR: recordSize
+        
+        alt BrtRowHdr
+            SR->>VI: readIntLE(buffer, offset)
+            VI-->>SR: rowNum
+            SR->>HANDLER: onRowStart(row, columnCount)
+        else BrtCellRk
+            SR->>VI: readIntLE(buffer, offset+8)
+            VI-->>SR: rkValue
+            SR->>VI: decodeRk(rkValue)
+            VI-->>SR: doubleValue
+            SR->>HANDLER: onCellNumber(row, col, value)
+        else BrtCellReal
+            SR->>VI: readDoubleLE(buffer, offset+8)
+            VI-->>SR: doubleValue
+            SR->>HANDLER: onCellNumber(row, col, value)
+        else BrtCellSt/BrtCellIsst
+            SR->>VI: readIntLE(buffer, offset+8)
+            VI-->>SR: sstIndex
+            SR->>SST: getString(sstIndex)
+            SST-->>SR: textValue
+            SR->>HANDLER: onCellText(row, col, value)
+        else BrtCellBool
+            SR->>SR: buffer[offset+8] != 0
+            SR->>HANDLER: onCellBoolean(row, col, value)
+        else BrtCellBlank
+            SR->>HANDLER: onCellBlank(row, col)
+        end
+        
+        SR->>SR: pos += recordSize
+    end
+    
+    SR->>HANDLER: onRowEnd(currentRow)

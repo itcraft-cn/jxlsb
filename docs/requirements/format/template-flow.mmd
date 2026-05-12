@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant API as XlsbWriter
+    participant TSR as TemplateSheetReader
+    participant SP as SheetParser
+    participant SST as SharedStringsTable
+    
+    API->>TSR: getColumnCount/getRowCount
+    TSR->>TSR: analyzeSheet
+    Note over TSR: 解析BrtRowHdr提取maxRow<br/>解析Cell记录提取maxColumn
+    
+    API->>SP: parse
+    SP->>SP: processBuffer
+    loop 记录解析
+        alt BrtCellIsst/BrtCellSt
+            SP->>SST: getString(sstIndex)
+            SST-->>SP: text
+            SP->>SP: 检查是否包含${marker}
+            SP->>SP: cells.add CellInfo row, col, data, styleIndex
+        else BrtMergeCell
+            SP->>SP: mergeCells.add MergeCell rowFirst, rowLast, colFirst, colLast
+        end
+    end
+    SP-->>API: cells, maxRow, maxCol, mergeCells
+    API->>API: 查找${marker}位置
+    API->>API: fillBatch startRow, startCol

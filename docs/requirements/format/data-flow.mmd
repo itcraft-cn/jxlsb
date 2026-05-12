@@ -1,0 +1,33 @@
+graph LR
+    subgraph API层
+        A[CellDataSupplier]
+        B[RowHandler]
+    end
+    
+    subgraph Format层
+        C[SheetWriter]
+        D[SheetReader]
+        E[SharedStringsTable]
+        F[StylesWriter]
+        G[Biff12Writer]
+        H[VarIntReader]
+    end
+    
+    subgraph Container层
+        I[ZIP容器]
+    end
+    
+    A --> C
+    C --> G
+    C --> E
+    C --> F
+    G --> I
+    
+    I --> D
+    D --> H
+    D --> E
+    H --> D
+    D --> B
+    
+    E --> I
+    F --> I

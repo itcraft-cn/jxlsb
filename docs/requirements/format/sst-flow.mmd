@@ -1,0 +1,20 @@
+graph TD
+    A[写入TEXT单元格] --> B{字符串已存在?}
+    B -->|是| C[返回已有索引]
+    B -->|否| D[添加新字符串]
+    D --> E[strings.add str]
+    E --> F[indexMap.put str, newIndex]
+    F --> G[totalCount.incrementAndGet]
+    G --> C
+    
+    H[读取TEXT单元格] --> I[获取SST索引]
+    I --> J[sstIndex from BrtCellIsst]
+    J --> K[查询字符串表]
+    K --> L[getString sstIndex]
+    L --> M[返回字符串值]
+    
+    N[写入SST.bin] --> O[Biff12Writer]
+    O --> P[BrtBeginSst: cTotals, cUnique]
+    P --> Q[loop: writeBrtSSTItem]
+    Q --> R[BrtEndSst]
+    R --> S[byte[] sstData]
