@@ -4,6 +4,12 @@
 
 A pure Java XLSB (Excel Binary Workbook) format reader/writer library.
 
+## Design Positioning
+
+This library has a fixed starting point: **high-performance data output (writing)**. Reading was originally meant only for consuming templates. But once reading was in place, high-performance reading became a natural extension of the same core.
+
+Viewed from this narrow, output-oriented angle, XLSX is simply not needed — XLSB is more than capable.
+
 ## Features
 
 - **Zero Dependencies**: Only SLF4J, no heavy libraries like POI
