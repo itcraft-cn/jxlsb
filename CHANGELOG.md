@@ -1,132 +1,152 @@
-# Changelog
+**中文** | [English](CHANGELOG_en.md)
 
-All notable changes to this project will be documented in this file.
+# 变更日志
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+本项目所有值得注意的变更都记录在此文件中。
+
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+## [未发布]
+
+### 修复
+
+- 代码审查问题修复：复用 `decodeRk`、简化加锁、截断告警、魔数常量化、资源管理
+
+### 新增
+
+- 各模块需求文档（API / format / container / data / 基础设施，含全局汇总）
+- 代码审查报告（2026-05-12）
+- 1M 行性能基准测试
+
+### 变更
+
+- 文档：新增「设计定位」章节
+- 构建：GPG 升级至 3.2.7
+- 版本：进入 1.2.0-dev
 
 ## [1.1.0] - 2026-04-20
 
-### Fixed
+### 修复
 
-- **readRows buffer boundary bug**: Text cells (BrtCellIsst) were incorrectly skipped when reading near batch boundaries
-  - Root cause: `handleBrtCellIsst` used `buffer.length` (fixed 16384) instead of `recordSize` for boundary check
-  - When offset approached buffer end, text cells (col 0/1) were lost, causing NullPointerException in test
-  - Fix: Use `recordSize` parameter since upper layer `processSheetBuffer` already ensures data integrity
-- **SheetReader.java**: `handleBrtRowHdr` and `handleBrtCellIsst` now use `size` instead of `buffer.length`
-- **VarIntReader.java**: Removed incorrect boundary checks that returned default values
-- **SharedStringsTable.java**: `processBuffer` now returns processed position, `load` handles remaining data correctly
+- **readRows 缓冲区边界缺陷**：靠近批次边界时文本单元格（BrtCellIsst）被错误跳过
+  - 根因：`handleBrtCellIsst` 使用 `buffer.length`（固定 16384）而非 `recordSize` 做边界判断
+  - 当偏移接近缓冲区末尾时，文本单元格（第 0/1 列）丢失，导致测试出现 NullPointerException
+  - 修复：使用 `recordSize` 参数，因上层 `processSheetBuffer` 已保证数据完整性
+- **SheetReader.java**：`handleBrtRowHdr` 与 `handleBrtCellIsst` 改用 `size` 而非 `buffer.length`
+- **VarIntReader.java**：移除返回默认值的错误边界判断
+- **SharedStringsTable.java**：`processBuffer` 现在返回已处理位置，`load` 正确处理剩余数据
 
-### Added
+### 新增
 
-- **Java 8 compatibility**: 
-  - `IoUtils.java` utility class for `readAllBytes()` replacement
-  - Test files updated to use `Paths.get()` instead of `Path.of()` (Java 9+)
-  - pom.xml profile mechanism for JDK23 compilation (skip in JDK8 environment)
+- **Java 8 兼容**：
+  - `IoUtils.java` 工具类，替代 `readAllBytes()`
+  - 测试文件改用 `Paths.get()` 替代 `Path.of()`（Java 9+）
+  - pom.xml profile 机制用于 JDK23 编译（JDK8 环境跳过）
 
 ## [1.0.0] - 2026-04-16
 
-### Added
+### 新增
 
-**Core Write Features**
-- Number cell support (integer, floating-point)
-- Text cell support with SST optimization
-- Boolean cell support
-- Date cell support (Excel date serial number)
-- Blank cell support
-- Cell style system (font, border, fill, alignment)
-- Number format support (percentage, comma, negative red, currency, date, time)
+**核心写入功能**
+- 数字单元格（整数、浮点）
+- 文本单元格，SST 优化
+- 布尔单元格
+- 日期单元格（Excel 日期序列号）
+- 空白单元格
+- 单元格样式系统（字体、边框、填充、对齐）
+- 数字格式支持（百分比、千分位、负红、货币、日期、时间）
 
-**Write APIs**
-- `writeBatch(sheetName, supplier, rowCount, columnCount)` - One-shot batch write
-- `startSheet(sheetName, columnCount)` + `writeRows()` + `endSheet()` - Streaming append write
-- Template-based write with `XlsbWriter.builder().template(path).path(output).build()`
+**写入 API**
+- `writeBatch(sheetName, supplier, rowCount, columnCount)` — 一次性批量写入
+- `startSheet(sheetName, columnCount)` + `writeRows()` + `endSheet()` — 流式追加写入
+- 基于模板的写入 `XlsbWriter.builder().template(path).path(output).build()`
 
-**Template Fill APIs**
-- `fillBatch(sheetIndex, dataList, startRow, startCol)` - Fixed position fill
-- `fillAtMarker("${marker}", dataList)` - Marker lookup fill
-- `startFill()` + `fillRows()` + `endFill()` - Streaming fill
-- Preserve template styles, merged cells, and all content
+**模板填充 API**
+- `fillBatch(sheetIndex, dataList, startRow, startCol)` — 固定位置填充
+- `fillAtMarker("${marker}", dataList)` — 标记查找填充
+- `startFill()` + `fillRows()` + `endFill()` — 流式填充
+- 保留模板样式、合并单元格及全部内容
 
-**Read Features**
-- Streaming read via `forEachRow(sheetIndex, rowConsumer)` callback
-- Paginated read via `readRows(sheetIndex, offset, limit)` batch return
-- Shared Strings Table (SST) support
-- BIFF12 format parsing (BrtCellRk, BrtCellReal, BrtCellSt, BrtCellBool, BrtCellBlank, BrtCellIsst)
+**读取功能**
+- 流式读取 `forEachRow(sheetIndex, rowConsumer)` 回调
+- 分页读取 `readRows(sheetIndex, offset, limit)` 批量返回
+- 共享字符串表（SST）支持
+- BIFF12 格式解析（BrtCellRk、BrtCellReal、BrtCellSt、BrtCellBool、BrtCellBlank、BrtCellIsst）
 
-**Memory Management**
-- Full off-heap memory architecture (zero GC pressure)
-- ByteBufferAllocator for Java 8-22
-- MemorySegmentAllocator for Java 23+ (Foreign Memory API)
-- SPI-based allocator provider mechanism
-- Memory pool with size-based buckets (64B/4KB/64KB/1MB/16MB)
+**内存管理**
+- 全量堆外内存架构（零 GC 压力）
+- ByteBufferAllocator（Java 8-22）
+- MemorySegmentAllocator（Java 23+，Foreign Memory API）
+- 基于 SPI 的分配器提供者机制
+- 按大小分桶的内存池（64B/4KB/64KB/1MB/16MB）
 
 **Multi-Release JAR**
-- Three artifact variants:
-  - `jxlsb-1.0.0.jar` (default, JDK 8)
-  - `jxlsb-1.0.0-jdk8.jar` (classifier: jdk8, JDK 8)
-  - `jxlsb-1.0.0-jdk23.jar` (classifier: jdk23, JDK 23+)
-- Automatic allocator selection based on JVM version
+- 三种产物变体：
+  - `jxlsb-1.0.0.jar`（默认，JDK 8）
+  - `jxlsb-1.0.0-jdk8.jar`（classifier: jdk8，JDK 8）
+  - `jxlsb-1.0.0-jdk23.jar`（classifier: jdk23，JDK 23+）
+- 根据 JVM 版本自动选择分配器
 
-**Performance**
-- 2-3x faster than Apache POI
-- 2-2.5x faster than EasyExcel
-- Comparable to FastExcel in speed
-- 35-50% smaller file size than XLSX
-- 256KB zip buffer optimization
-- SST concurrent optimization
+**性能**
+- 比 Apache POI 快 2-3 倍
+- 比 EasyExcel 快 2-2.5 倍
+- 速度与 FastExcel 相当
+- 文件体积比 XLSX 小 35-50%
+- 256KB zip 缓冲优化
+- SST 并发优化
 
-### Performance Benchmarks
+### 性能基准
 
-**100K rows × 10 columns:**
-| Library | File Size | Write Time |
+**100K 行 × 10 列：**
+| 库 | 文件大小 | 写入时间 |
 |---------|-----------|------------|
 | jxlsb | 2.72 MB | 453 ms |
 | FastExcel | 5.42 MB | 521 ms |
 | EasyExcel | 4.21 MB | 1121 ms |
 | POI | 4.16 MB | 1528 ms |
 
-**1M rows × 10 columns:**
-| Library | File Size | Write Time |
+**1M 行 × 10 列：**
+| 库 | 文件大小 | 写入时间 |
 |---------|-----------|------------|
 | jxlsb | 26.71 MB | 4647 ms |
 | FastExcel | 55.00 MB | 4621 ms |
 | EasyExcel | 42.54 MB | 9405 ms |
 | POI | 42.25 MB | 8334 ms |
 
-### Dependencies
+### 依赖
 
-- SLF4J API (only dependency)
-- No Apache POI, no EasyExcel, no other heavy libraries
+- SLF4J API（唯一依赖）
+- 无 Apache POI、无 EasyExcel、无其他重型库
 
-### Test Coverage
+### 测试覆盖
 
-- 130 unit tests all passing
-- Memory leak detection tests
-- Performance comparison tests
-- API integration tests
-- Template fill tests
+- 130 个单元测试全部通过
+- 内存泄漏检测测试
+- 性能对比测试
+- API 集成测试
+- 模板填充测试
 
-### Not Supported
+### 不支持
 
-- Formula cells
-- Chart objects
-- Conditional formatting
-- Macro/VBA
-- Footer template preservation (only header template supported)
+- 公式单元格
+- 图表对象
+- 条件格式
+- 宏/VBA
+- 尾部模板保留（仅支持表头模板）
 
-### Code Quality
+### 代码质量
 
-- P0-P2 issues resolved from code review
-- Pattern pre-compiled for XML template replacement
-- AutoCloseable implementation for resource management
-- serialVersionUID added for exception classes
-- EncryptionUtils extracted to eliminate code duplication
+- 从代码审查中解决 P0-P2 问题
+- XML 模板替换使用预编译 Pattern
+- 实现 AutoCloseable 进行资源管理
+- 异常类补充 serialVersionUID
+- 抽取 EncryptionUtils 消除重复代码
 
-### Documentation
+### 文档
 
-- README.md (English)
-- README_cn.md (Chinese)
-- CHANGELOG.md
-- AGENTS.md (project guide)
-- MEMORY.md (local development notes, not tracked)
+- README.md（中文） / README_en.md（英文）
+- CHANGELOG.md（中文） / CHANGELOG_en.md（英文）
+- MANUAL.md（中文） / MANUAL_en.md（英文）
+- AGENTS.md（项目指南）
+- MEMORY.md（本地开发笔记，不纳入版本管理）
