@@ -16,10 +16,24 @@ public final class XlsbContainer implements AutoCloseable {
         this.fileOut = fileOut;
     }
     
+    /** 默认压缩级别：速度优先。 */
+    public static final int DEFAULT_COMPRESSION_LEVEL = 1;
+
     public static XlsbContainer create(Path path) throws IOException {
+        return create(path, DEFAULT_COMPRESSION_LEVEL);
+    }
+
+    /**
+     * 创建容器并指定 ZIP 压缩级别（0=store，1-9=deflate）。
+     */
+    public static XlsbContainer create(Path path, int compressionLevel) throws IOException {
+        if (compressionLevel < 0 || compressionLevel > 9) {
+            throw new IllegalArgumentException("compression level must be in 0..=9, got " + compressionLevel);
+        }
         // 使用256KB缓冲区，减少磁盘IO次数
         OutputStream fileOut = new BufferedOutputStream(Files.newOutputStream(path), 256 * 1024);
         ZipOutputStream zipOut = new ZipOutputStream(fileOut);
+        zipOut.setLevel(compressionLevel);
         return new XlsbContainer(zipOut, fileOut);
     }
     

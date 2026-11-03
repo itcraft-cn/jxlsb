@@ -9,9 +9,21 @@
 
 ## [未发布]
 
+### 新增
+
+- **行列上限溢出策略**（与 rxlsb 对齐）：`Limits.MAX_COLUMNS = 16384`、`MAX_ROWS = 1048576`；
+  `Limits.setColumnOverflow/setRowOverflow/setOverflow` 全局配置，`OverflowBehavior.{ERROR, CUT}`；
+  每次写入通过 `SheetLimits` 快照，超限抛 `LimitExceededException` 或截断
+- 写入器 ZIP 压缩级别可配置：`XlsbWriter.Builder.compressionLevel(int)`，默认 **1（速度优先）**
+
 ### 修复
 
 - 代码审查问题修复：复用 `decodeRk`、简化加锁、截断告警、魔数常量化、资源管理
+- 空白单元格不再写入 `BrtCellBlank`，避免文件膨胀与 WPS 解析异常
+- 流式写入的 `BrtWsDim.last_row` 改为前导占位、结束时按偏移回填，不再因维度为 0 导致只显示部分行
+- RK 编码改为标准整数形式 `(n << 2) | 0x02`，修复大整数（如 536870911）被误判为 fInt/fX100 的读写错误；
+  `decodeRk` 标志位对齐 MS-XLSB（bit1=fInt，bit0=fX100）
+- 模板填充统一受行列上限约束（维度裁剪、超限单元格/填充列跳过）
 
 ### 新增
 

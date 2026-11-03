@@ -37,6 +37,8 @@ public final class SheetWriter {
     
     private Biff12Writer streamingWriter;
     private int streamingColumnCount;
+    private int streamingDimLastRowOffset;
+    private SheetLimits streamingLimits;
     
     public SheetWriter(SharedStringsTable sst) {
         this.sst = sst;
@@ -56,8 +58,13 @@ public final class SheetWriter {
     
     public byte[] writeSheet(CellDataSupplier supplier, int rowCount, int columnCount) 
             throws IOException {
-        // 预估缓冲区大小，设置上限避免超大Sheet过度分配
-        int estimatedSize = Math.min(rowCount * columnCount * 30 + 1024, 16 * 1024 * 1024);
+        // 维度限制在底层统一解析，批量/流式/模板填充共用同一策略。
+        SheetLimits limits = SheetLimits.begin(columnCount);
+        columnCount = limits.columns();
+        rowCount = limits.rows(0, rowCount);
+
+        // 预估缓冲区大小，设置上限避免超大Sheet过度分配（saturating 防溢出）
+        int estimatedSize = (int) Math.min((long) rowCount * columnCount * 30 + 1024, 16L * 1024 * 1024);
         Biff12Writer w = new Biff12Writer(Math.max(estimatedSize, 4096));
         
         writeSheetHeader(w, rowCount, columnCount);
@@ -69,7 +76,7 @@ public final class SheetWriter {
             
             for (int col = 0; col < columnCount; col++) {
                 CellData data = supplier.get(row, col);
-                if (data != null && data.getType() != null) {
+                if (data != null && data.getType() != null && data.getType() != CellType.BLANK) {
                     writeCell(w, row, col, data);
                 }
             }
@@ -81,26 +88,34 @@ public final class SheetWriter {
     }
     
     public void startStreaming(int columnCount) throws IOException {
+        SheetLimits limits = SheetLimits.begin(columnCount);
+        columnCount = limits.columns();
+
         int estimatedSize = 1024 * 1024; // 1MB initial buffer
         this.streamingWriter = new Biff12Writer(estimatedSize);
         this.streamingColumnCount = columnCount;
-        
-        writeSheetHeader(streamingWriter, 0, columnCount);
+        this.streamingLimits = limits;
+
+        // 前导先写维度（last_row 先置 0），结束时按偏移回填。
+        this.streamingDimLastRowOffset = writeSheetHeader(streamingWriter, 0, columnCount);
         streamingWriter.writeEmptyRecord(Biff12RecordType.BrtBeginSheetData);
     }
     
     public void appendRows(CellDataSupplier supplier, int startRow, int batchSize, int columnCount) 
             throws IOException {
-        if (streamingWriter == null) {
+        if (streamingWriter == null || streamingLimits == null) {
             throw new IllegalStateException("Streaming not started, call startStreaming() first");
         }
-        
-        for (int row = startRow; row < startRow + batchSize; row++) {
-            writeBrtRowHdr(streamingWriter, row, columnCount);
+
+        int rows = streamingLimits.rows(startRow, batchSize);
+        int cols = streamingColumnCount;
+
+        for (int row = startRow; row < startRow + rows; row++) {
+            writeBrtRowHdr(streamingWriter, row, cols);
             
-            for (int col = 0; col < columnCount; col++) {
+            for (int col = 0; col < cols; col++) {
                 CellData data = supplier.get(row, col);
-                if (data != null && data.getType() != null) {
+                if (data != null && data.getType() != null && data.getType() != CellType.BLANK) {
                     writeCell(streamingWriter, row, col, data);
                 }
             }
@@ -111,36 +126,42 @@ public final class SheetWriter {
         if (streamingWriter == null) {
             throw new IllegalStateException("Streaming not started");
         }
-        
+
+        // 回填维度 last_row，避免结束阶段整块拷贝行数据。
+        int lastRow = totalRows > 0 ? totalRows - 1 : 0;
+        streamingWriter.setIntLEAt(streamingDimLastRowOffset, lastRow);
+
         writeSheetFooter(streamingWriter);
         
         byte[] result = streamingWriter.toByteArray();
         streamingWriter = null;
         streamingColumnCount = 0;
+        streamingLimits = null;
         
         return result;
     }
     
-    private void writeSheetHeader(Biff12Writer w, int rowCount, int columnCount) throws IOException {
+    /**
+     * 写入 sheet 前导，返回 BrtWsDim 中 last_row 字段的字节偏移（用于回填）。
+     */
+    private int writeSheetHeader(Biff12Writer w, int rowCount, int columnCount) throws IOException {
         w.writeEmptyRecord(Biff12RecordType.BrtBeginSheet);
         
         writeBrtWsProp(w);
-        
-        if (rowCount > 0 && columnCount > 0) {
-            w.writeRecordHeader(Biff12RecordType.BrtWsDim, 16);
-            w.writeIntLE(0);
-            w.writeIntLE(rowCount - 1);
-            w.writeIntLE(0);
-            w.writeIntLE(columnCount - 1);
-        } else {
-            w.writeRecordHeader(Biff12RecordType.BrtWsDim, 16);
-            w.writeIntLE(0);
-            w.writeIntLE(0);
-            w.writeIntLE(0);
-            w.writeIntLE(0);
-        }
+
+        int dimOffset = w.size();
+        int lastRow = rowCount > 0 ? rowCount - 1 : 0;
+        int lastCol = columnCount > 0 ? columnCount - 1 : 0;
+        w.writeRecordHeader(Biff12RecordType.BrtWsDim, 16);
+        w.writeIntLE(0);
+        w.writeIntLE(lastRow);
+        w.writeIntLE(0);
+        w.writeIntLE(lastCol);
         
         writeViewRecords(w);
+
+        // type varint(2) + varsize(1) + first_row(4)
+        return dimOffset + 2 + 1 + 4;
     }
     
     private void writeSheetFooter(Biff12Writer w) throws IOException {
@@ -227,8 +248,8 @@ public final class SheetWriter {
                 writeBrtCellBool(w, row, col, (Boolean) data.getValue(), actualStyleIndex);
                 break;
             case BLANK:
-                writeBrtCellBlank(w, row, col, actualStyleIndex);
-                break;
+                // 空白单元格不生成记录（与 rxlsb 一致），避免文件膨胀。
+                return;
             default:
                 throw new IllegalArgumentException("Unknown cell type: " + data.getType());
         }
@@ -277,10 +298,9 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
         
         w.writeRecordHeader(Biff12RecordType.BrtCellRk, recordSize);
         w.writeCell(col, styleIndex);     // cell结构
-        
-        // RK 编码：取 IEEE 754 double 的高 32 位
-        long bits = Double.doubleToLongBits((double)value);
-        int rk = (int)(bits >> 32);
+
+        // 标准 RK 整数形式：num(30 位有符号)<<2 | fInt(bit1)=1
+        int rk = (value << 2) | 0x02;
         w.writeIntLE(rk);
     }
     
@@ -447,11 +467,14 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
                                           int templateMaxRow, int templateMaxCol,
                                           List<SheetParser.MergeCell> mergeCells) 
             throws IOException {
-        int totalRows = Math.max(templateMaxRow + 1, startRow + rowCount);
-        int totalCols = Math.max(templateMaxCol + 1, startCol + columnCount);
+        // 底层维度限制：与批量/流式写入使用同一策略（模板填充也受控）。
+        SheetLimits limits = SheetLimits.begin(Math.max(templateMaxCol + 1, startCol + columnCount));
+        int totalCols = limits.columns();
+        int maxCol = totalCols - 1;
+        int totalRows = limits.rows(0, Math.max(templateMaxRow + 1, startRow + rowCount));
         
-        // 预估缓冲区大小，设置上限避免超大Sheet过度分配
-        int estimatedSize = Math.min(totalRows * totalCols * 30 + 1024, 16 * 1024 * 1024);
+        // 预估缓冲区大小，设置上限避免超大Sheet过度分配（saturating 防溢出）
+        int estimatedSize = (int) Math.min((long) totalRows * totalCols * 30 + 1024, 16L * 1024 * 1024);
         Biff12Writer w = new Biff12Writer(Math.max(estimatedSize, 4096));
         
         writeSheetHeader(w, totalRows, totalCols);
@@ -459,8 +482,8 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
         
         for (int row = 0; row < totalRows; row++) {
             writeBrtRowHdr(w, row, totalCols);
-            writeTemplateCellsForRow(w, row, templateCells, startRow, rowCount, startCol, columnCount);
-            writeFillCellsForRow(w, row, supplier, startRow, rowCount, startCol, columnCount);
+            writeTemplateCellsForRow(w, row, templateCells, startRow, rowCount, startCol, columnCount, maxCol);
+            writeFillCellsForRow(w, row, supplier, startRow, rowCount, startCol, columnCount, maxCol);
         }
         
         writeSheetFooterWithMerge(w, mergeCells);
@@ -470,9 +493,13 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
     
     private void writeTemplateCellsForRow(Biff12Writer w, int row, 
                                           List<SheetParser.CellInfo> templateCells,
-                                          int startRow, int rowCount, int startCol, int columnCount) 
+                                          int startRow, int rowCount, int startCol, int columnCount,
+                                          int maxCol) 
             throws IOException {
         for (SheetParser.CellInfo cell : templateCells) {
+            if (cell.col > maxCol) {
+                continue;
+            }
             if (cell.row == row && isOutsideFillArea(cell.row, cell.col, startRow, rowCount, startCol, columnCount)) {
                 writeCellWithStyle(w, cell.row, cell.col, cell.data, cell.styleIndex);
             }
@@ -480,10 +507,12 @@ private void writeBrtCellRk(Biff12Writer w, int row, int col, int value, int sty
     }
     
     private void writeFillCellsForRow(Biff12Writer w, int row, CellDataSupplier supplier,
-                                       int startRow, int rowCount, int startCol, int columnCount) 
+                                       int startRow, int rowCount, int startCol, int columnCount,
+                                       int maxCol) 
             throws IOException {
-        if (row >= startRow && row < startRow + rowCount) {
-            for (int col = startCol; col < startCol + columnCount; col++) {
+        if (row >= startRow && row < startRow + rowCount && startCol <= maxCol) {
+            int fillEnd = Math.min(startCol + columnCount - 1, maxCol);
+            for (int col = startCol; col <= fillEnd; col++) {
                 CellData data = supplier.get(row, col);
                 if (data != null && data.getType() != null && data.getType() != CellType.BLANK) {
                     writeCell(w, row, col, data);

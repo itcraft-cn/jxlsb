@@ -49,7 +49,7 @@ public final class XlsbWriter implements AutoCloseable {
     
     private XlsbWriter(Builder builder) throws IOException {
         Objects.requireNonNull(builder.path, "Output path must not be null");
-        this.container = XlsbContainer.create(builder.path);
+        this.container = XlsbContainer.create(builder.path, builder.compressionLevel);
         
         if (builder.template != null) {
             this.isTemplateMode = true;
@@ -512,9 +512,21 @@ public final class XlsbWriter implements AutoCloseable {
     public static final class Builder {
         private Path template;
         private Path path;
+        private int compressionLevel = XlsbContainer.DEFAULT_COMPRESSION_LEVEL;
         
         public Builder template(Path template) {
             this.template = template;
+            return this;
+        }
+
+        /**
+         * ZIP 压缩级别（0=store，1-9=deflate）；默认 1，速度优先。
+         */
+        public Builder compressionLevel(int compressionLevel) {
+            if (compressionLevel < 0 || compressionLevel > 9) {
+                throw new IllegalArgumentException("compression level must be in 0..=9, got " + compressionLevel);
+            }
+            this.compressionLevel = compressionLevel;
             return this;
         }
         

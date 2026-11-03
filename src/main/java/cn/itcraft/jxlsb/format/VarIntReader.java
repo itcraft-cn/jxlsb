@@ -98,8 +98,9 @@ public final class VarIntReader {
      * @return 解码后的double值
      */
     public static double decodeRk(int rkValue) {
-        boolean isInt = (rkValue & 0x01) != 0;
-        boolean div100 = (rkValue & 0x02) != 0;
+        // 标准 RK：bit1 = fInt，bit0 = fX100。
+        boolean isInt = (rkValue & 0x02) != 0;
+        boolean div100 = (rkValue & 0x01) != 0;
         
         int valueBits = rkValue & 0xFFFFFFFC;
         

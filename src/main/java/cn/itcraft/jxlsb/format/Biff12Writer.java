@@ -22,16 +22,41 @@ public final class Biff12Writer {
     /** 高位续位标志 (0x80) */
     private static final int VAR_CONTINUE_FLAG = 0x80;
     
-    private final ByteArrayOutputStream baos;
+    private final PatchableByteArrayOutputStream baos;
     // 实例级别buffer，避免循环内重复创建
     private final byte[] intBuffer = new byte[4];
+
+    /** 支持按偏移回填的 ByteArrayOutputStream（用于流式维度修补）。 */
+    private static final class PatchableByteArrayOutputStream extends ByteArrayOutputStream {
+
+        PatchableByteArrayOutputStream(int size) {
+            super(size);
+        }
+
+        void setIntLEAt(int offset, int value) {
+            if (offset < 0 || offset + 4 > count) {
+                throw new IndexOutOfBoundsException("offset=" + offset + ", count=" + count);
+            }
+            buf[offset] = (byte) (value & 0xFF);
+            buf[offset + 1] = (byte) ((value >> 8) & 0xFF);
+            buf[offset + 2] = (byte) ((value >> 16) & 0xFF);
+            buf[offset + 3] = (byte) ((value >> 24) & 0xFF);
+        }
+    }
     
     public Biff12Writer() {
         this(64 * 1024);
     }
     
     public Biff12Writer(int estimatedSize) {
-        this.baos = new ByteArrayOutputStream(estimatedSize);
+        this.baos = new PatchableByteArrayOutputStream(estimatedSize);
+    }
+
+    /**
+     * 在指定偏移回填一个小端 int（用于事后修补维度等字段）。
+     */
+    public void setIntLEAt(int offset, int value) {
+        baos.setIntLEAt(offset, value);
     }
     
     /**

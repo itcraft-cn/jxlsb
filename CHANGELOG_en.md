@@ -9,9 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Row/column limit overflow policy** (aligned with rxlsb): `Limits.MAX_COLUMNS = 16384`,
+  `MAX_ROWS = 1048576`; `Limits.setColumnOverflow/setRowOverflow/setOverflow` with
+  `OverflowBehavior.{ERROR, CUT}`; each write snapshots via `SheetLimits` and either throws
+  `LimitExceededException` or truncates
+- Configurable ZIP compression level: `XlsbWriter.Builder.compressionLevel(int)`, default **1**
+
 ### Fixed
 
 - Code review fixes: reuse `decodeRk`, simplify locking, truncation warnings, magic-number constants, resource management
+- Blank cells no longer emit `BrtCellBlank`
+- Streaming `BrtWsDim.last_row` is now written as a placeholder and backfilled at finalize
+- RK encoding now uses the standard integer form `(n << 2) | 0x02`; `decodeRk` flags aligned with
+  MS-XLSB (bit1=fInt, bit0=fX100), fixing large-integer round-trips
+- Template filling now honors row/column limits (dimension clipping, skipping out-of-range cells)
 
 ### Added
 

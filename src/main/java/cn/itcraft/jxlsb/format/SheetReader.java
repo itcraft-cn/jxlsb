@@ -83,9 +83,12 @@ public final class SheetReader implements AutoCloseable {
     
     private void handleBrtCellSt(byte[] buffer, int offset, int size, RowHandler handler) {
         int col = VarIntReader.readIntLE(buffer, offset);
-        int sstIndex = VarIntReader.readIntLE(buffer, offset + 8);
-        
-        String value = sst.getString(sstIndex);
+        int cch = VarIntReader.readIntLE(buffer, offset + 8);
+        if (cch <= 0 || 12 + cch * 2 > size) {
+            handler.onCellText(currentRow, col, "");
+            return;
+        }
+        String value = new String(buffer, offset + 12, cch * 2, StandardCharsets.UTF_16LE);
         handler.onCellText(currentRow, col, value);
     }
     

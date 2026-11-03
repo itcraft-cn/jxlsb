@@ -175,9 +175,10 @@ public final class SheetParser implements AutoCloseable {
     private void handleCellSt(byte[] buffer, int offset, int size, int row) {
         int col = VarIntReader.readIntLE(buffer, offset);
         int styleIndex = readStyleIndex(buffer, offset);
-        int sstIdx = VarIntReader.readIntLE(buffer, offset + 8);
-        String text = sst.getString(sstIdx);
-        if (text != null) {
+        int cch = VarIntReader.readIntLE(buffer, offset + 8);
+        if (cch > 0 && 12 + cch * 2 <= size) {
+            String text = new String(buffer, offset + 12, cch * 2,
+                    java.nio.charset.StandardCharsets.UTF_16LE);
             cells.add(new CellInfo(row, col, CellData.text(text), styleIndex));
             maxCol = Math.max(maxCol, col);
         }
