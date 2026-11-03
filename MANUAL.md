@@ -129,6 +129,26 @@ writer.endFill();
 writer.close();
 ```
 
+### 4.4 行列上限与压缩级别
+
+```java
+import cn.itcraft.jxlsb.format.Limits;
+
+Limits.setOverflow(Limits.OverflowBehavior.CUT, Limits.OverflowBehavior.ERROR);
+
+try (XlsbWriter writer = XlsbWriter.builder()
+        .path(Paths.get("output.xlsb"))
+        .compressionLevel(6)   // 0=store，1-9=deflate；默认 1
+        .build()) {
+    writer.writeBatch("Sheet1", supplier, rows, cols);
+}
+```
+
+- 上限常量：`Limits.MAX_COLUMNS = 16384`、`Limits.MAX_ROWS = 1048576`
+- 溢出行为：`ERROR` 抛 `LimitExceededException`；`CUT` 截断到上限
+- 配置是全局的，每次写入操作开始时快照，只影响之后的操作
+- 批量写、流式写、模板填充均受同一策略约束
+
 ## 5. CellData 类型
 
 ```java

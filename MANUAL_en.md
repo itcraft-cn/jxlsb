@@ -129,6 +129,26 @@ writer.endFill();
 writer.close();
 ```
 
+### 4.4 Row/Column Limits and Compression
+
+```java
+import cn.itcraft.jxlsb.format.Limits;
+
+Limits.setOverflow(Limits.OverflowBehavior.CUT, Limits.OverflowBehavior.ERROR);
+
+try (XlsbWriter writer = XlsbWriter.builder()
+        .path(Paths.get("output.xlsb"))
+        .compressionLevel(6)   // 0=store, 1-9=deflate; default 1
+        .build()) {
+    writer.writeBatch("Sheet1", supplier, rows, cols);
+}
+```
+
+- Limits: `Limits.MAX_COLUMNS = 16384`, `Limits.MAX_ROWS = 1048576`
+- `ERROR` throws `LimitExceededException`; `CUT` truncates to the limit
+- Configuration is global and snapshotted when each write operation starts
+- Batch writes, streaming writes and template filling share the same policy
+
 ## 5. CellData Types
 
 ```java

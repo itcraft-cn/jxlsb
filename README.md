@@ -16,6 +16,8 @@
 - **堆外内存**：全量堆外内存架构，零GC压力
 - **高性能**：比POI快3x，比EasyExcel快2.5x，文件小35-50%
 - **企业级**：Java 8+支持，Multi-Release JAR（Java 23+自动使用Foreign Memory API）
+- **行列上限策略**：16384 列 × 1048576 行，`Error` / `Cut` 可选，超限可控
+- **压缩级别可调**：ZIP 压缩 0-9，默认 1（速度优先）
 
 > **企业级功能**（加密、水印）详见 [商业版对比](docs/opensource-vs-commercial.md)
 
@@ -86,6 +88,25 @@ writer.close();
 - ✅ 支持标记查找填充（如`${data}`）
 - ⚠️ **仅支持表头模板**：数据从指定位置向下填充，不支持头尾都有模板
 - ❌ 不支持尾部模板：填充数据后无法保留底部静态内容
+
+### 行列上限与压缩级别
+
+```java
+import cn.itcraft.jxlsb.format.Limits;
+
+// 列超限截断、行超限报错（全局配置，操作开始时快照）
+Limits.setOverflow(Limits.OverflowBehavior.CUT, Limits.OverflowBehavior.ERROR);
+
+// 压缩级别 0-9，默认 1（速度优先）
+XlsbWriter writer = XlsbWriter.builder()
+    .path(Paths.get("output.xlsb"))
+    .compressionLevel(6)
+    .build();
+```
+
+- `Limits.MAX_COLUMNS = 16384`、`Limits.MAX_ROWS = 1048576`
+- 超限行为：`ERROR` 抛 `LimitExceededException`，`CUT` 静默截断
+- 批量写、流式写、模板填充统一受同一策略约束
 
 ### 读取 API
 

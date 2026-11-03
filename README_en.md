@@ -16,6 +16,8 @@ Viewed from this narrow, output-oriented angle, XLSX is simply not needed — XL
 - **Off-Heap Memory**: Full off-heap architecture, zero GC pressure
 - **High Performance**: 3x faster than POI, 2.5x faster than EasyExcel, 35-50% smaller files
 - **Enterprise Ready**: Java 8+ support, Multi-Release JAR (Java 23+ auto-switches to Foreign Memory API)
+- **Row/Column Limit Policy**: 16384 columns × 1048576 rows, `Error` or `Cut` behavior
+- **Configurable Compression**: ZIP level 0-9, default 1 (speed first)
 
 > **Enterprise features** (encryption, watermark) available in [Commercial Edition](docs/opensource-vs-commercial.md)
 
@@ -86,6 +88,25 @@ writer.close();
 - ✅ Support marker lookup fill (e.g., `${data}`)
 - ⚠️ **Header template only**: Data fills downward from specified position
 - ❌ No footer template support: Cannot preserve bottom static content after fill
+
+### Row/Column Limits and Compression
+
+```java
+import cn.itcraft.jxlsb.format.Limits;
+
+// Cut on column overflow, error on row overflow (global, snapshotted per write)
+Limits.setOverflow(Limits.OverflowBehavior.CUT, Limits.OverflowBehavior.ERROR);
+
+// Compression level 0-9, default 1 (speed first)
+XlsbWriter writer = XlsbWriter.builder()
+    .path(Paths.get("output.xlsb"))
+    .compressionLevel(6)
+    .build();
+```
+
+- `Limits.MAX_COLUMNS = 16384`, `Limits.MAX_ROWS = 1048576`
+- `ERROR` throws `LimitExceededException`; `CUT` silently truncates
+- Batch writes, streaming writes and template filling share the same policy
 
 ### Read API
 
