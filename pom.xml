@@ -283,7 +283,7 @@
                                     <goal>jar-no-fork</goal>
                                 </goals>
                                 <configuration>
-                                    <classifier>sources-jdk8</classifier>
+                                    <classifier>jdk8-sources</classifier>
                                 </configuration>
                             </execution>
                         </executions>
@@ -340,7 +340,7 @@
                                     <goal>jar-no-fork</goal>
                                 </goals>
                                 <configuration>
-                                    <classifier>sources-jdk9plus</classifier>
+                                    <classifier>jdk9-sourcesplus</classifier>
                                 </configuration>
                             </execution>
                         </executions>
@@ -361,7 +361,7 @@
                         <version>${plugin.resources}</version>
                         <executions>
                             <execution>
-                                <id>copy-resources-jdk25</id>
+                                <id>copy-rejdk25-sources</id>
                                 <phase>compile</phase>
                                 <goals>
                                     <goal>copy-resources</goal>
@@ -437,7 +437,7 @@
                                     <goal>jar-no-fork</goal>
                                 </goals>
                                 <configuration>
-                                    <classifier>sources-jdk25</classifier>
+                                    <classifier>jdk25-sources</classifier>
                                 </configuration>
                             </execution>
                         </executions>
