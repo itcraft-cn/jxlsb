@@ -40,7 +40,7 @@
         <plugin.source>3.2.1</plugin.source>
         <plugin.javadoc>3.3.2</plugin.javadoc>
         <plugin.gpg>3.2.7</plugin.gpg>
-        <plugin.publish>0.7.0</plugin.publish>
+        <plugin.publish>0.12.0</plugin.publish>
         <plugin.spotbugs>4.8.0</plugin.spotbugs>
         <plugin.pmd>3.21.0</plugin.pmd>
         <plugin.resources>3.3.1</plugin.resources>
