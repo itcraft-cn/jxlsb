@@ -52,7 +52,7 @@
         <poi.version>5.2.5</poi.version>
         <easyexcel.version>3.3.3</easyexcel.version>
         <fastexcel.version>0.18.3</fastexcel.version>
-        <jdk23.output>${project.build.directory}/classes-java23</jdk23.output>
+        <jdk17.output>${project.build.directory}/classes-java17</jdk17.output>
     </properties>
 
     <dependencies>
@@ -136,25 +136,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${plugin.compiler}</version>
-                <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                    <compilerArgs>
-                        <arg>-Xlint:all</arg>
-                    </compilerArgs>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.openjdk.jmh</groupId>
-                            <artifactId>jmh-generator-annprocess</artifactId>
-                            <version>${jmh.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${plugin.compiler}</version>
                 <executions>
                     <execution>
                         <id>default-compile</id>
@@ -175,7 +156,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -200,13 +180,11 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${plugin.surefire}</version>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -220,7 +198,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -234,7 +211,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
@@ -249,7 +225,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
@@ -259,7 +234,6 @@
                     <publishingServerId>maven-sonatype-central</publishingServerId>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
@@ -269,7 +243,6 @@
                     <threshold>Medium</threshold>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
@@ -285,9 +258,9 @@
 
     <profiles>
         <profile>
-            <id>jdk23</id>
+            <id>jdk17</id>
             <activation>
-                <jdk>[23,)</jdk>
+                <jdk>[17,)</jdk>
             </activation>
             <build>
                 <plugins>
@@ -297,13 +270,13 @@
                         <version>${plugin.resources}</version>
                         <executions>
                             <execution>
-                                <id>copy-resources-jdk23</id>
+                                <id>copy-resources-jdk17</id>
                                 <phase>compile</phase>
                                 <goals>
                                     <goal>copy-resources</goal>
                                 </goals>
                                 <configuration>
-                                    <outputDirectory>${jdk23.output}</outputDirectory>
+                                    <outputDirectory>${jdk17.output}</outputDirectory>
                                     <resources>
                                         <resource>
                                             <directory>${project.basedir}/src/main/resources</directory>
@@ -312,7 +285,7 @@
                                             </excludes>
                                         </resource>
                                         <resource>
-                                            <directory>${project.basedir}/src/main/java23</directory>
+                                            <directory>${project.basedir}/src/main/java17</directory>
                                             <includes>
                                                 <include>META-INF/**</include>
                                             </includes>
@@ -328,18 +301,18 @@
                         <version>${plugin.compiler}</version>
                         <executions>
                             <execution>
-                                <id>jdk23-compile</id>
+                                <id>jdk17-compile</id>
                                 <phase>compile</phase>
                                 <goals>
                                     <goal>compile</goal>
                                 </goals>
                                 <configuration>
-                                    <release>23</release>
+                                    <release>17</release>
                                     <compileSourceRoots>
                                         <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
-                                        <compileSourceRoot>${project.basedir}/src/main/java23</compileSourceRoot>
+                                        <compileSourceRoot>${project.basedir}/src/main/java17</compileSourceRoot>
                                     </compileSourceRoots>
-                                    <outputDirectory>${jdk23.output}</outputDirectory>
+                                    <outputDirectory>${jdk17.output}</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -350,14 +323,30 @@
                         <version>${plugin.jar}</version>
                         <executions>
                             <execution>
-                                <id>jdk23-jar</id>
+                                <id>jdk17-jar</id>
                                 <phase>package</phase>
                                 <goals>
                                     <goal>jar</goal>
                                 </goals>
                                 <configuration>
-                                    <classifier>jdk23</classifier>
-                                    <classesDirectory>${jdk23.output}</classesDirectory>
+                                    <classifier>jdk17</classifier>
+                                    <classesDirectory>${jdk17.output}</classesDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>${plugin.source}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>sources-jdk17</classifier>
                                 </configuration>
                             </execution>
                         </executions>
