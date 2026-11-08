@@ -52,7 +52,7 @@
         <poi.version>5.2.5</poi.version>
         <easyexcel.version>3.3.3</easyexcel.version>
         <fastexcel.version>0.18.3</fastexcel.version>
-        <jdk17.output>${project.build.directory}/classes-java17</jdk17.output>
+        <jdk25.output>${project.build.directory}/classes-java25</jdk25.output>
     </properties>
 
     <dependencies>
@@ -258,9 +258,9 @@
 
     <profiles>
         <profile>
-            <id>jdk17</id>
+            <id>jdk25</id>
             <activation>
-                <jdk>[17,)</jdk>
+                <jdk>[25,)</jdk>
             </activation>
             <build>
                 <plugins>
@@ -270,13 +270,13 @@
                         <version>${plugin.resources}</version>
                         <executions>
                             <execution>
-                                <id>copy-resources-jdk17</id>
+                                <id>copy-resources-jdk25</id>
                                 <phase>compile</phase>
                                 <goals>
                                     <goal>copy-resources</goal>
                                 </goals>
                                 <configuration>
-                                    <outputDirectory>${jdk17.output}</outputDirectory>
+                                    <outputDirectory>${jdk25.output}</outputDirectory>
                                     <resources>
                                         <resource>
                                             <directory>${project.basedir}/src/main/resources</directory>
@@ -285,7 +285,7 @@
                                             </excludes>
                                         </resource>
                                         <resource>
-                                            <directory>${project.basedir}/src/main/java17</directory>
+                                            <directory>${project.basedir}/src/main/java25</directory>
                                             <includes>
                                                 <include>META-INF/**</include>
                                             </includes>
@@ -301,18 +301,18 @@
                         <version>${plugin.compiler}</version>
                         <executions>
                             <execution>
-                                <id>jdk17-compile</id>
+                                <id>jdk25-compile</id>
                                 <phase>compile</phase>
                                 <goals>
                                     <goal>compile</goal>
                                 </goals>
                                 <configuration>
-                                    <release>17</release>
+                                    <release>25</release>
                                     <compileSourceRoots>
                                         <compileSourceRoot>${project.basedir}/src/main/java</compileSourceRoot>
-                                        <compileSourceRoot>${project.basedir}/src/main/java17</compileSourceRoot>
+                                        <compileSourceRoot>${project.basedir}/src/main/java25</compileSourceRoot>
                                     </compileSourceRoots>
-                                    <outputDirectory>${jdk17.output}</outputDirectory>
+                                    <outputDirectory>${jdk25.output}</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -323,14 +323,14 @@
                         <version>${plugin.jar}</version>
                         <executions>
                             <execution>
-                                <id>jdk17-jar</id>
+                                <id>jdk25-jar</id>
                                 <phase>package</phase>
                                 <goals>
                                     <goal>jar</goal>
                                 </goals>
                                 <configuration>
-                                    <classifier>jdk17</classifier>
-                                    <classesDirectory>${jdk17.output}</classesDirectory>
+                                    <classifier>jdk25</classifier>
+                                    <classesDirectory>${jdk25.output}</classesDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -346,7 +346,7 @@
                                     <goal>jar-no-fork</goal>
                                 </goals>
                                 <configuration>
-                                    <classifier>sources-jdk17</classifier>
+                                    <classifier>sources-jdk25</classifier>
                                 </configuration>
                             </execution>
                         </executions>
