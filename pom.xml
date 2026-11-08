@@ -282,6 +282,12 @@
                                 <goals>
                                     <goal>jar-no-fork</goal>
                                 </goals>
+                            </execution>
+                            <execution>
+                                <id>attach-sources-jdk8</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
                                 <configuration>
                                     <classifier>jdk8-sources</classifier>
                                 </configuration>
@@ -336,6 +342,12 @@
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>attach-sources-jdk9plus</id>
                                 <goals>
                                     <goal>jar-no-fork</goal>
                                 </goals>
@@ -433,6 +445,12 @@
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>attach-sources-jdk25</id>
                                 <goals>
                                     <goal>jar-no-fork</goal>
                                 </goals>
