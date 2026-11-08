@@ -15,7 +15,7 @@
 - **零依赖**：仅依赖SLF4J，无需POI等重型库
 - **堆外内存**：全量堆外内存架构，零GC压力
 - **高性能**：比POI快3x，比EasyExcel快2.5x，文件小35-50%
-- **企业级**：Java 8+支持，Multi-Release JAR（Java 23+自动使用Foreign Memory API）
+- **企业级**：Java 8+支持，Multi-Release JAR（Java 25+自动使用Foreign Memory API）
 - **行列上限策略**：16384 列 × 1048576 行，`Error` / `Cut` 可选，超限可控
 - **压缩级别可调**：ZIP 压缩 0-9，默认 1（速度优先）
 
@@ -165,7 +165,7 @@ while (true) {
 <dependency>
     <groupId>cn.itcraft</groupId>
     <artifactId>jxlsb</artifactId>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -291,7 +291,7 @@ CellData.time(timestamp)              // h:mm:ss
 ├─────────────────────────────────────────┤
 │       Memory Management Layer            │
 │  ByteBufferAllocator (Java 8)            │
-│  MemorySegmentAllocator (Java 23+)       │
+│  MemorySegmentAllocator (Java 25+)       │
 ├─────────────────────────────────────────┤
 │       BIFF12 Format Layer                │
 │  BrtCellRk / BrtCellReal / BrtCellIsst   │

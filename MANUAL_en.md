@@ -13,7 +13,7 @@ jxlsb is a pure Java XLSB (Excel Binary Workbook) reader/writer library. Its fix
 
 | Item | Requirement |
 |------|-------------|
-| JDK | 8+ (Java 23+ automatically switches to the Foreign Memory API) |
+| JDK | 8+ (Java 25+ automatically switches to the Foreign Memory API) |
 | Build tool | Maven |
 | Runtime dependency | SLF4J (logging only) |
 
@@ -25,7 +25,7 @@ jxlsb is a pure Java XLSB (Excel Binary Workbook) reader/writer library. Its fix
 <dependency>
     <groupId>cn.itcraft</groupId>
     <artifactId>jxlsb</artifactId>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 

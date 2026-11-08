@@ -7,15 +7,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-09
 
 ### Added
 
+- **JDK 25 support**: Added `src/main/java25` and the `jdk25` Maven profile (`release 25`), producing
+  `jxlsb-1.2.0-jdk25.jar` (classifier: `jdk25`) and `sources-jdk25`; JDK 25+ automatically uses the Foreign Memory API
 - **Row/column limit overflow policy** (aligned with rxlsb): `Limits.MAX_COLUMNS = 16384`,
   `MAX_ROWS = 1048576`; `Limits.setColumnOverflow/setRowOverflow/setOverflow` with
   `OverflowBehavior.{ERROR, CUT}`; each write snapshots via `SheetLimits` and either throws
   `LimitExceededException` or truncates
 - Configurable ZIP compression level: `XlsbWriter.Builder.compressionLevel(int)`, default **1**
+- Requirements documents for all modules (API / format / container / data / infrastructure, plus global summary)
+- Code review report (2026-05-12)
+- 1M-row performance benchmark
 
 ### Fixed
 
@@ -26,17 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   MS-XLSB (bit1=fInt, bit0=fX100), fixing large-integer round-trips
 - Template filling now honors row/column limits (dimension clipping, skipping out-of-range cells)
 
-### Added
-
-- Requirements documents for all modules (API / format / container / data / infrastructure, plus global summary)
-- Code review report (2026-05-12)
-- 1M-row performance benchmark
-
 ### Changed
 
-- Documentation: added "Design Positioning" section
-- Build: upgraded GPG to 3.2.7
-- Version: moved to 1.2.0-dev
+- Documentation: added "Design Positioning" section; updated README/MANUAL dependency version to 1.2.0 and JDK description to 25+
+- Build: upgraded GPG to 3.2.7; JDK profile migrated from jdk23 to jdk25
+- Version: 1.2.0 released
 
 ## [1.1.0] - 2026-04-20
 

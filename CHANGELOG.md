@@ -7,14 +7,19 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [1.2.0] - 2026-11-09
 
 ### 新增
 
+- **JDK 25 支持**：新增 `src/main/java25` 与 `jdk25` Maven profile（`release 25`），
+  产出 `jxlsb-1.2.0-jdk25.jar`（classifier: `jdk25`）与 `sources-jdk25`；JDK 25+ 自动使用 Foreign Memory API
 - **行列上限溢出策略**（与 rxlsb 对齐）：`Limits.MAX_COLUMNS = 16384`、`MAX_ROWS = 1048576`；
   `Limits.setColumnOverflow/setRowOverflow/setOverflow` 全局配置，`OverflowBehavior.{ERROR, CUT}`；
   每次写入通过 `SheetLimits` 快照，超限抛 `LimitExceededException` 或截断
 - 写入器 ZIP 压缩级别可配置：`XlsbWriter.Builder.compressionLevel(int)`，默认 **1（速度优先）**
+- 各模块需求文档（API / format / container / data / 基础设施，含全局汇总）
+- 代码审查报告（2026-05-12）
+- 1M 行性能基准测试
 
 ### 修复
 
@@ -25,17 +30,11 @@
   `decodeRk` 标志位对齐 MS-XLSB（bit1=fInt，bit0=fX100）
 - 模板填充统一受行列上限约束（维度裁剪、超限单元格/填充列跳过）
 
-### 新增
-
-- 各模块需求文档（API / format / container / data / 基础设施，含全局汇总）
-- 代码审查报告（2026-05-12）
-- 1M 行性能基准测试
-
 ### 变更
 
-- 文档：新增「设计定位」章节
-- 构建：GPG 升级至 3.2.7
-- 版本：进入 1.2.0-dev
+- 文档：新增「设计定位」章节；README/MANUAL 依赖版本更新至 1.2.0，JDK 描述同步为 25+
+- 构建：GPG 升级至 3.2.7；JDK profile 由 jdk23 迁移至 jdk25
+- 版本：1.2.0 正式发布
 
 ## [1.1.0] - 2026-04-20
 

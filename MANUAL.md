@@ -13,7 +13,7 @@ jxlsb 是纯 Java 实现的 XLSB（Excel Binary Workbook）读写库。设计出
 
 | 项 | 要求 |
 |----|------|
-| JDK | 8+（Java 23+ 自动切换到 Foreign Memory API） |
+| JDK | 8+（Java 25+ 自动切换到 Foreign Memory API） |
 | 构建工具 | Maven |
 | 运行时依赖 | SLF4J（仅日志） |
 
@@ -25,7 +25,7 @@ jxlsb 是纯 Java 实现的 XLSB（Excel Binary Workbook）读写库。设计出
 <dependency>
     <groupId>cn.itcraft</groupId>
     <artifactId>jxlsb</artifactId>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 

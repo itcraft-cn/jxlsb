@@ -15,7 +15,7 @@ Viewed from this narrow, output-oriented angle, XLSX is simply not needed — XL
 - **Zero Dependencies**: Only SLF4J, no heavy libraries like POI
 - **Off-Heap Memory**: Full off-heap architecture, zero GC pressure
 - **High Performance**: 3x faster than POI, 2.5x faster than EasyExcel, 35-50% smaller files
-- **Enterprise Ready**: Java 8+ support, Multi-Release JAR (Java 23+ auto-switches to Foreign Memory API)
+- **Enterprise Ready**: Java 8+ support, Multi-Release JAR (Java 25+ auto-switches to Foreign Memory API)
 - **Row/Column Limit Policy**: 16384 columns × 1048576 rows, `Error` or `Cut` behavior
 - **Configurable Compression**: ZIP level 0-9, default 1 (speed first)
 
@@ -165,7 +165,7 @@ while (true) {
 <dependency>
     <groupId>cn.itcraft</groupId>
     <artifactId>jxlsb</artifactId>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -291,7 +291,7 @@ CellData.time(timestamp)              // h:mm:ss
 ├─────────────────────────────────────────┤
 │       Memory Management Layer            │
 │  ByteBufferAllocator (Java 8)            │
-│  MemorySegmentAllocator (Java 23+)       │
+│  MemorySegmentAllocator (Java 25+)       │
 ├─────────────────────────────────────────┤
 │       BIFF12 Format Layer                │
 │  BrtCellRk / BrtCellReal / BrtCellIsst   │
