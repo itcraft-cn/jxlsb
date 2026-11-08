@@ -29,6 +29,8 @@
 - RK 编码改为标准整数形式 `(n << 2) | 0x02`，修复大整数（如 536870911）被误判为 fInt/fX100 的读写错误；
   `decodeRk` 标志位对齐 MS-XLSB（bit1=fInt，bit0=fX100）
 - 模板填充统一受行列上限约束（维度裁剪、超限单元格/填充列跳过）
+- JDK 9+ 默认编译改用 `release 8`（JDK 8 仍用 source/target 8），
+  修复在 JDK 8 运行 JDK 9+ 编译产物时 `ByteBuffer.position(int)` 抛 `NoSuchMethodError`
 
 ### 变更
 

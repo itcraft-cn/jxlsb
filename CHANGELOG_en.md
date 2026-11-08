@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RK encoding now uses the standard integer form `(n << 2) | 0x02`; `decodeRk` flags aligned with
   MS-XLSB (bit1=fInt, bit0=fX100), fixing large-integer round-trips
 - Template filling now honors row/column limits (dimension clipping, skipping out-of-range cells)
+- Default compilation on JDK 9+ now uses `release 8` (JDK 8 still uses source/target 8), fixing
+  `NoSuchMethodError` on `ByteBuffer.position(int)` when running JDK 9+-compiled classes on JDK 8
 
 ### Changed
 
